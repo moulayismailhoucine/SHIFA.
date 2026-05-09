@@ -1,5 +1,7 @@
+import os
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -10,8 +12,8 @@ class Settings(BaseSettings):
     app_debug: bool = False
     app_url: str = "http://localhost:8000"
 
-    # Database
-    database_url: str = "postgresql://medisys:medisys_pass@localhost:5432/medisys_db"
+    # Database (use DATABASE_URL env var for Postgres; fallback to SQLite)
+    database_url: str = "sqlite:///./medisys.db"
 
     # JWT
     jwt_secret: str = "insecure-jwt-secret"
@@ -32,6 +34,15 @@ class Settings(BaseSettings):
 
     # Edge
     backend_origin: str = "http://localhost:8000"
+
+    @model_validator(mode="after")
+    def check_database_url(self):
+        env_url = os.getenv("DATABASE_URL", "")
+        if env_url and "localhost" not in env_url:
+            self.database_url = env_url
+        else:
+            self.database_url = "sqlite:///./medisys.db"
+        return self
 
 
 @lru_cache
