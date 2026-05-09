@@ -1,0 +1,932 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Patient Profile') }}{% endblock %}
+{% block page_title %}{{ _('Patient Profile') }}{% endblock %}
+{% block page_subtitle %}{{ _('Clinical history & vital trends') }}{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .profile-avatar {
+    width: 4.5rem; height: 4.5rem; border-radius: 1rem;
+    background: linear-gradient(135deg,#3b82f6,#8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.75rem; font-weight: 800; color: #fff;
+    flex-shrink: 0; box-shadow: 0 8px 24px rgba(59,130,246,.35);
+  }
+  .info-pill {
+    display: inline-flex; align-items: center; gap: .375rem;
+    padding: .25rem .75rem; border-radius: 9999px; font-size: .75rem;
+    font-weight: 600; border: 1px solid var(--border); background: var(--bg-input);
+    color: var(--text-muted);
+  }
+  .section-title {
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-muted); margin-bottom: .75rem;
+  }
+  .table-th { font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); padding: .75rem 1rem;
+    text-align: left; border-bottom: 1px solid var(--border); }
+  .table-td { padding: .75rem 1rem; font-size: .875rem; color: var(--text);
+    border-bottom: 1px solid var(--border); }
+  .rec-row:hover { background: var(--nav-hover-bg); }
+  .stat-card { background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 1rem; padding: 1.25rem; display: flex; flex-direction: column; gap: .25rem; }
+  .stat-val { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+  .stat-lbl { font-size: .7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); }
+  .rec-badge { display: inline-flex; align-items: center; padding: .125rem .5rem;
+    border-radius: 9999px; font-size: .7rem; font-weight: 700; }
+  .rec-badge.alert { background: rgba(234,179,8,.15); color: #eab308; }
+  .rec-badge.critical { background: rgba(239,68,68,.15); color: #ef4444; }
+  .rec-badge.info { background: rgba(59,130,246,.15); color: #3b82f6; }
+  #vitals-chart-wrap { position: relative; height: 220px; }
+  .tab-btn { padding: .375rem 1rem; border-radius: .625rem; font-size: .8125rem;
+    font-weight: 600; border: 1px solid transparent; cursor: pointer;
+    transition: all .2s; color: var(--text-muted); background: transparent; }
+  .tab-btn.active { background: var(--nav-active-bg); color: var(--nav-active-text);
+    border-color: rgba(59,130,246,.3); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  #spinner { display: flex; align-items: center; justify-content: center;
+    min-height: 12rem; }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<a href="/patients" class="btn-secondary">
+  <i data-lucide="arrow-left" class="w-4 h-4"></i> {{ _('Back') }}
+</a>
+{% endblock %}
+
+{% block content %}
+<div id="spinner">
+  <svg class="animate-spin w-8 h-8 text-blue-500" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+  </svg>
+</div>
+
+<div id="profile-root" class="hidden space-y-5 animate-fade-in">
+
+  <!-- Patient header card -->
+  <div class="card p-6">
+    <div class="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+      <div class="profile-avatar" id="p-avatar">?</div>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-xl font-bold" id="p-name">—</h1>
+        <div class="flex flex-wrap gap-2 mt-2" id="p-pills"></div>
+      </div>
+      <div class="flex gap-2 flex-shrink-0" id="edit-btn-wrap">
+        <button onclick="openEditModal()" class="btn-secondary">
+          <i data-lucide="edit-2" class="w-4 h-4"></i> {{ _('Edit') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="stat-cards">
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Age') }}</span>
+      <span class="stat-val" id="s-age">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Blood Type') }}</span>
+      <span class="stat-val" id="s-blood" style="color:#ef4444">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Visits') }}</span>
+      <span class="stat-val" id="s-visits">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Ordonnances') }}</span>
+      <span class="stat-val" id="s-ordo">—</span>
+    </div>
+  </div>
+
+  <!-- Vitals chart -->
+  <div class="card p-5" id="vitals-chart-card">
+    <div class="flex items-center justify-between mb-4">
+      <p class="section-title mb-0">{{ _('Vital Trends') }}</p>
+      <div class="flex gap-1" id="vitals-tabs">
+        <button class="tab-btn active" onclick="switchVitals(this,'hr')">{{ _('Heart Rate') }}</button>
+        <button class="tab-btn" onclick="switchVitals(this,'temp')">{{ _('Temp') }}</button>
+        <button class="tab-btn" onclick="switchVitals(this,'spo2')">{{ _('SpO₂') }}</button>
+        <button class="tab-btn" onclick="switchVitals(this,'glucose')">{{ _('Glucose') }}</button>
+      </div>
+    </div>
+    <div id="vitals-chart-wrap">
+      <canvas id="vitals-chart"></canvas>
+    </div>
+    <p id="no-vitals" class="hidden text-center py-8" style="color:var(--text-muted);font-size:.875rem">{{ _('No vitals recorded yet') }}</p>
+  </div>
+
+  <!-- Tabs: Records / Ordonnances / Labs / Recommendations -->
+  <div class="card overflow-hidden">
+    <div class="flex gap-1 p-3 border-b" style="border-color:var(--border)">
+      <button class="tab-btn active" onclick="switchTab(this,'tab-records')" id="tab-btn-records">
+        <i data-lucide="file-text" class="w-3.5 h-3.5 inline mr-1"></i>{{ _('Records') }}
+      </button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-ordo')" id="tab-btn-ordo">
+        <i data-lucide="pill" class="w-3.5 h-3.5 inline mr-1"></i>{{ _('Ordonnances') }}
+      </button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-labs')" id="tab-btn-labs">
+        <i data-lucide="microscope" class="w-3.5 h-3.5 inline mr-1"></i>{{ _('Lab Results') }}
+      </button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-recs')" id="tab-btn-recs">
+        <i data-lucide="activity" class="w-3.5 h-3.5 inline mr-1"></i>{{ _('AI Insights') }}
+      </button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-nursing')" id="tab-btn-nursing">
+        <i data-lucide="heart-pulse" class="w-3.5 h-3.5 inline mr-1"></i>{{ _('Nursing Orders') }}
+      </button>
+    </div>
+
+    <!-- Medical Records -->
+    <div id="tab-records" class="tab-panel active">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead><tr>
+            <th class="table-th">{{ _('Date') }}</th>
+            <th class="table-th">{{ _('Type') }}</th>
+            <th class="table-th">{{ _('Diagnosis') }}</th>
+            <th class="table-th hidden md:table-cell">BP</th>
+            <th class="table-th hidden md:table-cell">HR</th>
+            <th class="table-th hidden lg:table-cell">Temp</th>
+          </tr></thead>
+          <tbody id="records-tbody">
+            <tr><td colspan="6" class="table-td text-center py-10" style="color:var(--text-muted)">{{ _('Loading…') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Ordonnances -->
+    <div id="tab-ordo" class="tab-panel">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead><tr>
+            <th class="table-th">{{ _('Date') }}</th>
+            <th class="table-th">{{ _('Medications') }}</th>
+            <th class="table-th">{{ _('Status') }}</th>
+            <th class="table-th">{{ _('Taken') }}</th>
+          </tr></thead>
+          <tbody id="ordo-tbody">
+            <tr><td colspan="4" class="table-td text-center py-10" style="color:var(--text-muted)">{{ _('Loading…') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Lab Results -->
+    <div id="tab-labs" class="tab-panel">
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold" style="color:var(--text)">{{ _('Lab Results') }}</h3>
+          <button onclick="openLabUploadModal()" class="btn-primary" style="font-size:.8125rem;padding:.4rem .75rem" id="add-lab-result-btn">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ _('Add Lab Result') }}
+          </button>
+        </div>
+        <div id="labs-list" class="space-y-2">
+          <p style="color:var(--text-muted);text-align:center;padding:2rem">{{ _('Loading…') }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Recommendations -->
+    <div id="tab-recs" class="tab-panel">
+      <div id="recs-list" class="p-4 space-y-3">
+        <p style="color:var(--text-muted);text-align:center;padding:2rem">{{ _('Loading…') }}</p>
+      </div>
+    </div>
+
+    <!-- Nursing Orders -->
+    <div id="tab-nursing" class="tab-panel">
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold" style="color:var(--text)">{{ _('Nursing Orders') }}</h3>
+          <button onclick="openNursingModal()" class="btn-primary" style="font-size:.8125rem;padding:.4rem .75rem" id="new-nursing-order-btn">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ _('New Nursing Order') }}
+          </button>
+        </div>
+        <div id="nursing-orders-list" class="space-y-2">
+          <p style="color:var(--text-muted);text-align:center;padding:2rem">{{ _('Loading…') }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Nursing Order Create Modal -->
+<div id="nursing-modal" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:28rem;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _('New Nursing Order') }}</h2>
+      <button onclick="closeNursingModal()" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="nursing-form" onsubmit="saveNursingOrder(event)" class="space-y-3">
+      <div>
+        <label class="section-title">{{ _('Title') }} *</label>
+        <input name="title" class="input" placeholder="{{ _('e.g. Check vitals every 2h') }}" required />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="section-title">{{ _('Type') }}</label>
+          <select name="order_type" id="order-type-select" class="input" onchange="toggleMedicationMethod(this.value)">
+            <option value="medication">{{ _('Medication') }}</option>
+            <option value="monitoring">{{ _('Monitoring') }}</option>
+            <option value="care">{{ _('Care') }}</option>
+            <option value="other">{{ _('Other') }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="section-title">{{ _('Priority') }}</label>
+          <select name="priority" class="input">
+            <option value="routine">{{ _('Routine') }}</option>
+            <option value="urgent">{{ _('Urgent') }}</option>
+            <option value="stat">{{ _('STAT') }}</option>
+          </select>
+        </div>
+      </div>
+      <div id="medication-method-box" style="display:none">
+        <label class="section-title">{{ _('Method of Administration') }}</label>
+        <select name="medication_method" id="medication-method-select" class="input">
+          <option value="oral">{{ _('Oral') }}</option>
+          <option value="injection">{{ _('Injection') }}</option>
+          <option value="iv">{{ _('Intravenous (IV)') }}</option>
+          <option value="topical">{{ _('Topical') }}</option>
+          <option value="inhalation">{{ _('Inhalation') }}</option>
+          <option value="subcutaneous">{{ _('Subcutaneous') }}</option>
+          <option value="rectal">{{ _('Rectal') }}</option>
+          <option value="other">{{ _('Other') }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="section-title">{{ _('Assign Nurse') }}</label>
+        <select name="nurse_id" id="nursing-nurse-id" class="input">
+          <option value="">— {{ _('Unassigned') }} —</option>
+        </select>
+      </div>
+      <div>
+        <label class="section-title">{{ _('Due Date') }}</label>
+        <input name="due_at" type="datetime-local" class="input" />
+      </div>
+      <div>
+        <label class="section-title">{{ _('Description') }}</label>
+        <textarea name="description" rows="3" class="input" placeholder="{{ _('Instructions for the nurse…') }}"></textarea>
+      </div>
+      <div id="nursing-err" class="hidden p-3 text-sm text-red-500" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:.75rem"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" onclick="closeNursingModal()" class="btn-secondary flex-1" style="justify-content:center">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1" style="justify-content:center">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _('Create Order') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:28rem;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _('Edit Patient') }}</h2>
+      <button onclick="closeEditModal()" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="edit-form" onsubmit="saveEdit(event)" class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="section-title">{{ _('Full Name') }} *</label>
+          <input id="edit-name" name="name" class="input" required />
+        </div>
+        <div>
+          <label class="section-title">{{ _('Age') }}</label>
+          <input id="edit-age" name="age" type="number" class="input" />
+        </div>
+        <div>
+          <label class="section-title">{{ _('Gender') }}</label>
+          <select id="edit-gender" name="gender" class="input">
+            <option value="">—</option>
+            <option>{{ _('Male') }}</option><option>{{ _('Female') }}</option><option>{{ _('Other') }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="section-title">{{ _('Phone') }}</label>
+          <input id="edit-phone" name="phone" class="input" />
+        </div>
+        <div>
+          <label class="section-title">{{ _('Blood Type') }}</label>
+          <select id="edit-blood" name="blood_type" class="input">
+            <option value="">—</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="section-title">{{ _('Email') }}</label>
+          <input id="edit-email" name="email" type="email" class="input" />
+        </div>
+      </div>
+      <div id="edit-err" class="hidden p-3 text-sm text-red-500" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:.75rem"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" onclick="closeEditModal()" class="btn-secondary flex-1" style="justify-content:center">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1" style="justify-content:center">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _('Save') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lab Result Upload Modal -->
+<div id="lab-upload-modal" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:28rem;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _('Add Lab Result') }}</h2>
+      <button onclick="closeLabUploadModal()" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="lab-upload-form" onsubmit="saveLabUpload(event)" class="space-y-3" enctype="multipart/form-data">
+      <input type="hidden" name="patient_id" value="{{ patient_id }}" />
+      <div>
+        <label class="section-title">{{ _('Title') }} *</label>
+        <input name="title" class="input" placeholder="{{ _('e.g. Blood Test — CBC') }}" required />
+      </div>
+      <div>
+        <label class="section-title">{{ _('Notes') }}</label>
+        <textarea name="note" rows="2" class="input" placeholder="{{ _('Optional notes…') }}"></textarea>
+      </div>
+      <div id="lab-category-box" style="display:none">
+        <label class="section-title">{{ _('Category') }}</label>
+        <select name="category" id="lab-category-select" class="input">
+          <option value="">— {{ _('Select') }} —</option>
+          <option value="xray">{{ _('X-Ray') }}</option>
+          <option value="mri">{{ _('MRI') }}</option>
+          <option value="ct_scan">{{ _('CT Scan') }}</option>
+          <option value="ultrasound">{{ _('Ultrasound') }}</option>
+          <option value="other">{{ _('Other') }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="section-title">{{ _('File') }} *</label>
+        <input name="file" id="lab-upload-file" type="file" class="input pt-1.5" accept=".pdf,.jpg,.jpeg,.png,.tiff" required onchange="handleLabFileChange(this)" />
+      </div>
+      <div id="lab-upload-err" class="hidden p-3 text-sm text-red-500" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:.75rem"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" onclick="closeLabUploadModal()" class="btn-secondary flex-1" style="justify-content:center">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1" style="justify-content:center">
+          <i data-lucide="upload" class="w-4 h-4"></i> {{ _('Upload') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const PATIENT_ID = {{ patient_id }};
+  let vitalsData = [];
+  let chartInstance = null;
+  let currentVitalKey = 'hr';
+  let patientData = null;
+
+  function getHeaders() {
+    return { Authorization: `Bearer ${Auth.getToken()}` };
+  }
+
+  const VITAL_CONFIG = {
+    hr:      { label: '{{ _('Heart Rate') }} (bpm)', color: '#ef4444', key: 'heart_rate' },
+    temp:    { label: '{{ _('Temp') }} (°C)', color: '#f97316', key: 'temperature' },
+    spo2:    { label: '{{ _('SpO₂') }} (%)',         color: '#06b6d4', key: 'oxygen_saturation' },
+    glucose: { label: '{{ _('Glucose') }} (mg/dL)',  color: '#a855f7', key: 'glucose' },
+  };
+
+  window._T = {
+    "Patient not found or access denied.": "{{ _('Patient not found or access denied.') }}",
+    "Back to Patients": "{{ _('Back to Patients') }}",
+    "General": "{{ _('General') }}",
+    "No medical records yet": "{{ _('No medical records yet') }}",
+    "No ordonnances yet": "{{ _('No ordonnances yet') }}",
+    "Yes": "{{ _('Yes') }}",
+    "No": "{{ _('No') }}",
+    "No lab results yet": "{{ _('No lab results yet') }}",
+    "Could not load recommendations": "{{ _('Could not load recommendations') }}",
+    "Patient updated!": "{{ _('Patient updated!') }}",
+    "Failed to save changes": "{{ _('Failed to save changes') }}",
+    "Could not load orders": "{{ _('Could not load orders') }}",
+    "No nursing orders yet": "{{ _('No nursing orders yet') }}",
+    "Pending": "{{ _('Pending') }}",
+    "In Progress": "{{ _('In Progress') }}",
+    "Completed": "{{ _('Completed') }}",
+    "Cancelled": "{{ _('Cancelled') }}",
+    "Assigned to nurse": "{{ _('Assigned to nurse') }}",
+    "Due": "{{ _('Due') }}",
+    "Unassigned": "{{ _('Unassigned') }}",
+    "Nursing order created!": "{{ _('Nursing order created!') }}",
+    "Failed to create order": "{{ _('Failed to create order') }}",
+    "Permission denied: only doctors can create nursing orders": "{{ _('Permission denied: only doctors can create nursing orders') }}",
+    "Start": "{{ _('Start') }}",
+    "Complete": "{{ _('Complete') }}",
+    "Status updated!": "{{ _('Status updated!') }}",
+    "Failed to update": "{{ _('Failed to update') }}",
+    "AI X-RAY FRACTURE ANALYSIS": "{{ _('AI X-RAY FRACTURE ANALYSIS') }}",
+    "Diagnosis": "{{ _('Diagnosis') }}",
+    "Probability": "{{ _('Probability') }}",
+    "Clinical Note": "{{ _('Clinical Note') }}",
+    "NFC": "{{ _('NFC') }}",
+    "Lab result uploaded!": "{{ _('Lab result uploaded!') }}",
+    "Upload failed": "{{ _('Upload failed') }}",
+    "Add Lab Result": "{{ _('Add Lab Result') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  // ── Tabs ───────────────────────────────────────────────────────────
+  function switchTab(btn, panelId) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      if (b.closest('#profile-root .card:last-child, #profile-root .card:nth-last-child(1)')) b.classList.remove('active');
+    });
+    btn.classList.add('active');
+    ['tab-records','tab-ordo','tab-labs','tab-recs'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('active'); el.style.display = 'none'; }
+    });
+    const panel = document.getElementById(panelId);
+    if (panel) { panel.classList.add('active'); panel.style.display = 'block'; }
+  }
+
+  function switchVitals(btn, key) {
+    document.querySelectorAll('#vitals-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentVitalKey = key;
+    renderChart();
+  }
+
+  // ── Chart ──────────────────────────────────────────────────────────
+  function renderChart() {
+    const cfg = VITAL_CONFIG[currentVitalKey];
+    const filtered = vitalsData.filter(v => v[cfg.key] != null);
+    const noVitals = document.getElementById('no-vitals');
+    const wrap = document.getElementById('vitals-chart-wrap');
+
+    if (!filtered.length) {
+      wrap.style.display = 'none';
+      noVitals.classList.remove('hidden');
+      return;
+    }
+    wrap.style.display = 'block';
+    noVitals.classList.add('hidden');
+
+    const labels = filtered.map(v => new Date(v.recorded_at).toLocaleDateString());
+    const data = filtered.map(v => v[cfg.key]);
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const gridColor = isDark ? 'rgba(51,65,85,0.5)' : 'rgba(226,232,240,0.8)';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+
+    if (chartInstance) chartInstance.destroy();
+    const ctx = document.getElementById('vitals-chart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: cfg.label,
+          data,
+          borderColor: cfg.color,
+          backgroundColor: cfg.color + '22',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: cfg.color,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // ── Load everything ───────────────────────────────────────────────
+  async function loadProfile() {
+    const token = Auth.getToken();
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const [histRes, recRes] = await Promise.all([
+      fetch(`/api/patients/${PATIENT_ID}/history`, { headers }).then(r => r.json()).catch(() => null),
+      fetch(`/api/patients/${PATIENT_ID}/recommendations`, { headers }).then(r => r.json()).catch(() => null),
+    ]);
+
+    document.getElementById('spinner').style.display = 'none';
+
+    if (!histRes || !histRes.success) {
+      document.getElementById('profile-root').innerHTML =
+        `<div class="card p-10 text-center" style="color:var(--text-muted)">
+          <i data-lucide="alert-circle" class="w-10 h-10 mx-auto mb-3 text-red-400"></i>
+          <p class="font-semibold text-red-400">${_t('Patient not found or access denied.')}</p>
+          <a href="/patients" class="btn-secondary mt-4 inline-flex">← ${_t('Back to Patients')}</a>
+        </div>`;
+      document.getElementById('profile-root').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const { patient, medical_records, ordonnances, lab_results, vitals_trend } = histRes.data;
+    patientData = patient;
+    vitalsData = vitals_trend || [];
+
+    // Hide non-lab elements for laboratory users
+    const userRole = (Auth.getUser() || {}).role;
+    if (userRole === 'laboratory') {
+      document.getElementById('edit-btn-wrap').style.display = 'none';
+      document.getElementById('vitals-chart-card').style.display = 'none';
+      document.getElementById('tab-btn-records').style.display = 'none';
+      document.getElementById('tab-btn-ordo').style.display = 'none';
+      document.getElementById('tab-btn-recs').style.display = 'none';
+      document.getElementById('tab-btn-nursing').style.display = 'none';
+      // Auto-switch to Lab Results tab
+      const labsBtn = document.getElementById('tab-btn-labs');
+      if (labsBtn) labsBtn.click();
+    } else {
+      document.getElementById('add-lab-result-btn').style.display = 'none';
+    }
+
+    // Hide New Nursing Order button for non-doctors
+    if (userRole !== 'doctor' && userRole !== 'admin') {
+      const nursingBtn = document.getElementById('new-nursing-order-btn');
+      if (nursingBtn) nursingBtn.style.display = 'none';
+    }
+
+    // Header
+    document.getElementById('p-avatar').textContent = patient.name.charAt(0).toUpperCase();
+    document.getElementById('p-name').textContent = patient.name;
+    const pills = document.getElementById('p-pills');
+    pills.innerHTML = [
+      patient.gender   ? `<span class="info-pill"><i data-lucide="user" class="w-3 h-3"></i>${patient.gender}</span>` : '',
+      patient.phone    ? `<span class="info-pill"><i data-lucide="phone" class="w-3 h-3"></i>${patient.phone}</span>` : '',
+      patient.email    ? `<span class="info-pill"><i data-lucide="mail" class="w-3 h-3"></i>${patient.email}</span>` : '',
+      patient.nfc_uid  ? `<span class="info-pill"><i data-lucide="credit-card" class="w-3 h-3"></i>${_t('NFC')}: ${patient.nfc_uid}</span>` : '',
+    ].join('');
+
+    // Stats
+    document.getElementById('s-age').textContent   = patient.age || '—';
+    document.getElementById('s-blood').textContent = patient.blood_type || '—';
+    document.getElementById('s-visits').textContent = medical_records.length;
+    document.getElementById('s-ordo').textContent   = ordonnances.length;
+
+    // Vitals chart
+    renderChart();
+
+    // Records table
+    const rTbody = document.getElementById('records-tbody');
+    if (!medical_records.length) {
+      rTbody.innerHTML = `<tr><td colspan="6" class="table-td text-center py-10" style="color:var(--text-muted)">${_t('No medical records yet')}</td></tr>`;
+    } else {
+      rTbody.innerHTML = medical_records.map(r => `
+        <tr class="rec-row transition-colors">
+          <td class="table-td">${r.visit_date}</td>
+          <td class="table-td"><span style="background:rgba(59,130,246,.12);color:#3b82f6;border-radius:.5rem;padding:.1rem .5rem;font-size:.75rem;font-weight:600">${r.visit_type || _t('General')}</span></td>
+          <td class="table-td">${r.diagnosis || '—'}</td>
+          <td class="table-td hidden md:table-cell">${r.blood_pressure || '—'}</td>
+          <td class="table-td hidden md:table-cell">${r.heart_rate ? r.heart_rate + ' bpm' : '—'}</td>
+          <td class="table-td hidden lg:table-cell">${r.temperature ? r.temperature + '°C' : '—'}</td>
+        </tr>`).join('');
+    }
+
+    // Ordonnances
+    const oTbody = document.getElementById('ordo-tbody');
+    if (!ordonnances.length) {
+      oTbody.innerHTML = `<tr><td colspan="4" class="table-td text-center py-10" style="color:var(--text-muted)">${_t('No ordonnances yet')}</td></tr>`;
+    } else {
+      const statusColor = { active:'text-green-500', expired:'text-red-400', cancelled:'text-gray-400' };
+      oTbody.innerHTML = ordonnances.map(o => `
+        <tr class="rec-row transition-colors">
+          <td class="table-td">${o.issued_date}</td>
+          <td class="table-td" style="max-width:16rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.medications || '—'}</td>
+          <td class="table-td"><span class="${statusColor[o.status]||''}">${o.status}</span></td>
+          <td class="table-td">${o.is_taken ? '✅ ' + _t('Yes') : '⬜ ' + _t('No')}</td>
+        </tr>`).join('');
+    }
+
+    // Lab results
+    const labsEl = document.getElementById('labs-list');
+    if (!lab_results.length) {
+      labsEl.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:2rem">${_t('No lab results yet')}</p>`;
+    } else {
+      const catLabel = { xray: 'X-Ray', mri: 'MRI', ct_scan: 'CT Scan', ultrasound: 'Ultrasound', blood_test: 'Blood Test', other: 'Other' };
+      labsEl.innerHTML = lab_results.map(lr => {
+        const aiCard = lr.ai_diagnosis ? renderAiCard(lr) : '';
+        return `
+        <div style="margin-bottom:.75rem">
+          <a href="${lr.url}" target="_blank" style="display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:.75rem;border:1px solid var(--border);background:var(--bg-input);text-decoration:none;transition:border-color .2s" class="hover:border-blue-500">
+            <i data-lucide="file" class="w-5 h-5 text-blue-400 flex-shrink-0"></i>
+            <div class="flex-1 min-w-0">
+              <p style="font-weight:600;color:var(--text);font-size:.875rem">${lr.title}</p>
+              <p style="font-size:.75rem;color:var(--text-muted)">${lr.category ? '<span style="background:var(--nav-hover-bg);padding:.1rem .4rem;border-radius:.375rem;margin-right:.25rem">' + (catLabel[lr.category] || lr.category) + '</span>' : ''}${lr.file_type} · ${new Date(lr.created_at).toLocaleDateString()}</p>
+            </div>
+            <i data-lucide="external-link" class="w-4 h-4 flex-shrink-0" style="color:var(--text-muted)"></i>
+          </a>
+          ${aiCard}
+        </div>`;
+      }).join('');
+    }
+
+    function renderAiCard(lr) {
+      const isNormal = lr.ai_diagnosis === 'Normal';
+      const color = isNormal ? '#10b981' : '#ef4444';
+      const bg = isNormal ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)';
+      const border = isNormal ? 'rgba(16,185,129,.25)' : 'rgba(239,68,68,.25)';
+      const icon = isNormal ? 'check-circle' : 'alert-triangle';
+      return `
+      <div style="margin-top:.5rem;margin-left:0;padding:.875rem 1rem;border-radius:.75rem;border:1px solid ${border};background:${bg}">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.375rem">
+          <i data-lucide="${icon}" class="w-4 h-4" style="color:${color}"></i>
+          <span style="font-weight:700;font-size:.8125rem;color:${color};text-transform:uppercase;letter-spacing:.04em">${_t('AI X-RAY FRACTURE ANALYSIS')}</span>
+        </div>
+        <p style="font-size:.875rem;font-weight:600;color:var(--text);margin-bottom:.25rem">${_t('Diagnosis')}: <span style="color:${color}">${lr.ai_diagnosis}</span></p>
+        <div style="margin-bottom:.5rem">
+          <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.25rem">${_t('Probability')}: <span style="font-weight:600;color:var(--text)">${lr.ai_probability}%</span></p>
+          <div style="height:6px;background:var(--border);border-radius:999px;overflow:hidden">
+            <div style="width:${lr.ai_probability}%;height:100%;background:${color};border-radius:999px;transition:width .5s ease"></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:var(--bg-card)">
+          <i data-lucide="clipboard-list" class="w-4 h-4 flex-shrink-0" style="color:var(--text-muted);margin-top:.125rem"></i>
+          <p style="font-size:.75rem;color:var(--text-muted);line-height:1.4">${_t('Clinical Note')}: ${lr.ai_note || ''}</p>
+        </div>
+        ${lr.ai_model_version ? `<p style="font-size:.65rem;color:var(--text-muted);margin-top:.375rem;text-align:right">Model: ${lr.ai_model_version}</p>` : ''}
+      </div>`;
+    }
+
+    // Recommendations
+    const recsEl = document.getElementById('recs-list');
+    if (!recRes || !recRes.success) {
+      recsEl.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:2rem">${_t('Could not load recommendations')}</p>`;
+    } else {
+      const iconMap = { alert:'alert-triangle', critical:'alert-octagon', info:'info' };
+      recsEl.innerHTML = recRes.data.map(r => `
+        <div class="rec-badge ${r.type}" style="display:flex;align-items:flex-start;gap:.75rem;padding:.875rem 1rem;border-radius:.875rem;width:100%;font-size:.875rem;font-weight:400">
+          <i data-lucide="${iconMap[r.type]||'info'}" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+          <div>
+            <p style="font-weight:700;margin-bottom:.125rem">${r.category}</p>
+            <p>${r.message}</p>
+          </div>
+        </div>`).join('');
+    }
+
+    document.getElementById('profile-root').classList.remove('hidden');
+    // Initialise tab panels
+    ['tab-ordo','tab-labs','tab-recs','tab-nursing'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    if (window.lucide) lucide.createIcons();
+
+    // Load nursing orders for this patient (skip for lab users)
+    if (userRole !== 'laboratory') {
+      loadNursingOrders();
+    }
+  }
+
+  // ── Edit modal ────────────────────────────────────────────────────
+  function openEditModal() {
+    if (!patientData) return;
+    document.getElementById('edit-name').value   = patientData.name || '';
+    document.getElementById('edit-age').value    = patientData.age || '';
+    document.getElementById('edit-gender').value = patientData.gender || '';
+    document.getElementById('edit-phone').value  = patientData.phone || '';
+    document.getElementById('edit-blood').value  = patientData.blood_type || '';
+    document.getElementById('edit-email').value  = patientData.email || '';
+    const m = document.getElementById('edit-modal');
+    m.style.display = 'flex'; m.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+  function closeEditModal() {
+    const m = document.getElementById('edit-modal');
+    m.style.display = 'none'; m.classList.add('hidden');
+  }
+  async function saveEdit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = Object.fromEntries(new FormData(form));
+    if (data.age) data.age = parseInt(data.age); else delete data.age;
+    Object.keys(data).forEach(k => { if (!data[k] && data[k] !== 0) delete data[k]; });
+    const token = Auth.getToken();
+    const res = await fetch(`/api/patients/${PATIENT_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    }).then(r => r.json()).catch(() => null);
+    if (res && res.success) {
+      closeEditModal();
+      showToast(_t('Patient updated!'));
+      loadProfile();
+    } else {
+      const err = document.getElementById('edit-err');
+      err.textContent = res?.detail || _t('Failed to save changes');
+      err.classList.remove('hidden');
+    }
+  }
+
+  // ── Nursing Orders ────────────────────────────────────────────────
+  async function loadNursingOrders() {
+    const res = await fetch(`/api/nursing-orders?patient_id=${PATIENT_ID}`, { headers: getHeaders() })
+      .then(r => r.json()).catch(() => null);
+    const el = document.getElementById('nursing-orders-list');
+    if (!res?.success) {
+      el.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:2rem">${_t('Could not load orders')}</p>`;
+      return;
+    }
+    const orders = res.data || [];
+    if (!orders.length) {
+      el.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:2rem">${_t('No nursing orders yet')}</p>`;
+      return;
+    }
+    const statusColor = { pending:'text-yellow-500', in_progress:'text-blue-500', completed:'text-green-500', cancelled:'text-red-400' };
+    const statusLabel = { pending:_t('Pending'), in_progress:_t('In Progress'), completed:_t('Completed'), cancelled:_t('Cancelled') };
+    const priorityBadge = p => {
+      const map = { routine:'bg-slate-500/15 text-slate-400', urgent:'bg-orange-500/15 text-orange-500', stat:'bg-red-500/15 text-red-500' };
+      return `<span class="badge ${map[p]||'bg-gray-500/15 text-gray-500'}">${p}</span>`;
+    };
+    const userRole = (Auth.getUser() || {}).role;
+    const isNurse = userRole === 'nurse';
+    el.innerHTML = orders.map(o => {
+      let actionBtns = '';
+      if (isNurse && o.status === 'pending') {
+        actionBtns = `<button onclick="updateNursingStatus(${o.id},'in_progress')" class="btn-primary" style="font-size:.75rem;padding:.25rem .5rem;background:#3b82f6"><i data-lucide="play" class="w-3 h-3"></i> ${_t('Start')}</button>`;
+      } else if (isNurse && o.status === 'in_progress') {
+        actionBtns = `<button onclick="updateNursingStatus(${o.id},'completed')" class="btn-primary" style="font-size:.75rem;padding:.25rem .5rem;background:#059669"><i data-lucide="check" class="w-3 h-3"></i> ${_t('Complete')}</button>`;
+      }
+      return `
+      <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.875rem 1rem;border-radius:.875rem;border:1px solid var(--border);background:var(--bg)" class="hover:border-blue-500/40 transition-colors">
+        <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5"></i>
+        <div class="flex-1 min-w-0">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.25rem">
+            <p style="font-weight:600;font-size:.875rem">${o.title}</p>
+            <div class="flex items-center gap-2">
+              ${priorityBadge(o.priority)}
+              ${actionBtns}
+            </div>
+          </div>
+          <p style="font-size:.75rem;color:var(--text-muted)">${o.order_type}${o.medication_method ? ' (' + o.medication_method + ')' : ''} · <span class="${statusColor[o.status]||''}">${statusLabel[o.status]||o.status}</span>${o.due_at ? ' · ' + _t('Due') + ' ' + new Date(o.due_at).toLocaleString() : ''}</p>
+          ${o.description ? `<p style="font-size:.8125rem;color:var(--text-muted);margin-top:.25rem">${o.description}</p>` : ''}
+          ${o.nurse_id ? `<p style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem">${_t('Assigned to nurse')}</p>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  async function updateNursingStatus(orderId, newStatus) {
+    const res = await fetch(`/api/nursing-orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    }).then(r => r.json()).catch(() => null);
+
+    if (res && res.success) {
+      showToast(_t('Status updated!'));
+      loadNursingOrders();
+    } else {
+      showToast(res?.detail || _t('Failed to update'), 'error');
+    }
+  }
+
+  async function loadNurses() {
+    const res = await fetch('/api/doctor/nurses?limit=200', { headers: getHeaders() })
+      .then(r => r.json()).catch(() => null);
+    if (!res?.success) return;
+    const nurses = res.data.items || [];
+    const select = document.getElementById('nursing-nurse-id');
+    select.innerHTML = `<option value="">— ${_t('Unassigned')} —</option>` +
+      nurses.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+  }
+
+  function toggleMedicationMethod(type) {
+    const box = document.getElementById('medication-method-box');
+    if (box) box.style.display = (type === 'medication') ? 'block' : 'none';
+  }
+
+  function openNursingModal() {
+    document.getElementById('nursing-form').reset();
+    document.getElementById('nursing-err').classList.add('hidden');
+    toggleMedicationMethod('medication');
+    loadNurses();
+    const m = document.getElementById('nursing-modal');
+    m.style.display = 'flex'; m.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+  function closeNursingModal() {
+    const m = document.getElementById('nursing-modal');
+    m.style.display = 'none'; m.classList.add('hidden');
+  }
+
+  async function saveNursingOrder(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.patient_id = PATIENT_ID;
+    if (!data.nurse_id) delete data.nurse_id;
+    if (!data.due_at) delete data.due_at;
+    if (!data.description) delete data.description;
+    if (data.order_type !== 'medication') delete data.medication_method;
+
+    let res, status, rawText;
+    try {
+      const r = await fetch('/api/nursing-orders', {
+        method: 'POST',
+        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      status = r.status;
+      rawText = await r.text();
+      try { res = JSON.parse(rawText); } catch { res = null; }
+    } catch (e) {
+      res = null;
+      rawText = String(e);
+    }
+
+    if (res && res.success) {
+      closeNursingModal();
+      showToast(_t('Nursing order created!'));
+      loadNursingOrders();
+    } else {
+      let msg = _t('Failed to create order');
+      if (Array.isArray(res?.detail)) {
+        msg = res.detail.map(e => e.msg || String(e)).join(', ');
+      } else if (typeof res?.detail === 'string') {
+        msg = res.detail;
+      } else if (status === 403) {
+        msg = _t('Permission denied: only doctors can create nursing orders');
+      } else if (rawText && rawText.length < 200) {
+        msg = rawText;
+      }
+      const err = document.getElementById('nursing-err');
+      err.textContent = '(' + (status || '??') + ') ' + msg;
+      err.classList.remove('hidden');
+      console.error('Nursing order error:', { status, rawText, res, data });
+    }
+  }
+
+  // ── Lab Upload Modal ──────────────────────────────────────────────
+  function openLabUploadModal() {
+    document.getElementById('lab-upload-form').reset();
+    document.getElementById('lab-category-box').style.display = 'none';
+    document.getElementById('lab-upload-err').classList.add('hidden');
+    const m = document.getElementById('lab-upload-modal');
+    m.style.display = 'flex'; m.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+  function closeLabUploadModal() {
+    const m = document.getElementById('lab-upload-modal');
+    m.style.display = 'none'; m.classList.add('hidden');
+  }
+  function handleLabFileChange(input) {
+    const file = input.files[0];
+    const box = document.getElementById('lab-category-box');
+    const select = document.getElementById('lab-category-select');
+    if (file && file.type.startsWith('image/')) {
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+      if (select) select.value = '';
+    }
+  }
+  async function saveLabUpload(e) {
+    e.preventDefault();
+    const token = Auth.getToken();
+    const formData = new FormData(e.target);
+    const res = await fetch('/api/lab-results/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(r => r.json()).catch(() => null);
+
+    if (res && res.success) {
+      closeLabUploadModal();
+      showToast(_t('Lab result uploaded!'));
+      loadProfile();
+    } else {
+      const err = document.getElementById('lab-upload-err');
+      err.textContent = res?.detail || _t('Upload failed');
+      err.classList.remove('hidden');
+    }
+  }
+
+  // Expose switchTab to global for the inline onclick handlers
+  window.switchTab = switchTab;
+
+  document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+{% endblock %}

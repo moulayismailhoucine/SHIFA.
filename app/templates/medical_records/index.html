@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Medical Records') }}{% endblock %}
+{% block page_title %}{{ _('Medical Records') }}{% endblock %}
+{% block page_subtitle %}{{ _('Clinical visit records') }}{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex gap-4 items-center">
+  <div class="relative flex-1 max-w-md">
+    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+    <input id="patient-id-search" type="number" class="input pl-10" placeholder="{{ _('Enter patient ID to search…') }}" oninput="loadRecords(this.value)" />
+  </div>
+  <span id="records-count" class="text-xs text-slate-500"></span>
+</div>
+
+<div class="card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-slate-700/50">
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Date') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Type') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Diagnosis') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4 hidden md:table-cell">{{ _('Vitals') }}</th>
+        </tr>
+      </thead>
+      <tbody id="records-tbody">
+        <tr><td colspan="4" class="text-center py-12 text-slate-500">{{ _('Enter a patient ID to load records') }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window._T = {
+    "Error loading records": "{{ _('Error loading records') }}",
+    "records": "{{ _('records') }}",
+    "No records for this patient": "{{ _('No records for this patient') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  async function loadRecords(patientId) {
+    if (!patientId) return;
+    const token = Auth.getToken();
+    const res = await fetch(`/api/medical-records?patient_id=${patientId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json()).catch(() => null);
+
+    const tbody = document.getElementById('records-tbody');
+    if (!res?.success) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-12 text-slate-500">${_t('Error loading records')}</td></tr>`; return; }
+    document.getElementById('records-count').textContent = `${res.data.length} ${_t('records')}`;
+    if (!res.data.length) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-12 text-slate-500">${_t('No records for this patient')}</td></tr>`; return; }
+    tbody.innerHTML = res.data.map(r => `
+      <tr class="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+        <td class="px-6 py-4 text-sm text-white font-medium">${r.visit_date}</td>
+        <td class="px-4 py-4"><span class="badge bg-blue-600/20 text-blue-400">${r.visit_type || '{{ _('General') }}'}</span></td>
+        <td class="px-4 py-4 text-sm text-slate-300 max-w-xs truncate">${r.diagnosis || '—'}</td>
+        <td class="px-4 py-4 text-xs text-slate-400 hidden md:table-cell">
+          ${r.temperature ? `🌡 ${r.temperature}°C` : ''} ${r.heart_rate ? `❤️ ${r.heart_rate}bpm` : ''} ${r.blood_pressure ? `🩸 ${r.blood_pressure}` : ''}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });
+</script>
+{% endblock %}

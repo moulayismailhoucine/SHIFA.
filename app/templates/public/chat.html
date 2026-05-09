@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}{{ _('AI Medical Chat') }}{% endblock %}
+{% set show_nav = false %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-900 flex flex-col relative overflow-hidden">
+  <!-- Background -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-0 left-1/4 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/5 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="relative z-10 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-lg">
+    <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="/" class="text-slate-400 hover:text-white transition-colors">
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-white">{{ _('MediAssist AI') }}</h1>
+          <p class="text-xs text-green-400 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+            {{ _('Online') }}
+          </p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a href="/booking" class="btn-secondary text-xs py-1.5">📅 {{ _('Book Appointment') }}</a>
+        <a href="/login" class="btn-primary text-xs py-1.5">{{ _('Staff Login') }}</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Chat area -->
+  <div class="flex-1 relative z-10 max-w-3xl w-full mx-auto flex flex-col px-6 py-4 gap-4 overflow-hidden" style="height: calc(100vh - 73px - 80px);">
+    <!-- Disclaimer banner -->
+    <div class="flex items-start gap-3 p-4 bg-amber-900/20 border border-amber-500/30 rounded-xl">
+      <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5"></i>
+      <p class="text-xs text-amber-300">
+        <strong>{{ _('Medical Disclaimer:') }}</strong> {{ _('MediAssist provides general health information only. It does not diagnose conditions or replace professional medical advice. Always consult a qualified healthcare professional for medical decisions.') }}
+      </p>
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 pr-1">
+      <!-- Welcome message -->
+      <div class="flex gap-3 animate-fade-in">
+        <div class="w-8 h-8 bg-blue-600 rounded-xl flex-shrink-0 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" />
+          </svg>
+        </div>
+        <div class="glass rounded-2xl rounded-tl-sm px-4 py-3 max-w-lg">
+          <p class="text-slate-200 text-sm leading-relaxed">
+            👋 {{ _('Hello! I\'m') }} <strong class="text-blue-400">MediAssist</strong>, {{ _('your AI health assistant. I can help you with general health questions, symptoms information, and wellness guidance.') }}
+          </p>
+          <p class="text-slate-400 text-xs mt-2">{{ _('How can I help you today?') }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div class="relative z-10 border-t border-slate-700/50 bg-slate-900/80 backdrop-blur-lg">
+    <div class="max-w-3xl mx-auto px-6 py-4">
+      <!-- Suggestions -->
+      <div class="flex gap-2 mb-3 flex-wrap">
+        {% set suggestions = [
+          "What are common cold symptoms?",
+          "How can I improve my sleep?",
+          "What is normal blood pressure?",
+          "When should I see a doctor?",
+        ] %}
+        {% for s in suggestions %}
+        <button onclick="sendSuggestion(this)" data-msg="{{ s }}"
+          class="text-xs px-3 py-1.5 bg-slate-800/60 border border-slate-700/50 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 rounded-full transition-all">
+          {{ s }}
+        </button>
+        {% endfor %}
+      </div>
+      <form id="chat-form" onsubmit="sendMessage(event)" class="flex gap-3">
+        <input id="chat-input" type="text" class="input flex-1"
+          placeholder="{{ _('Ask a health question…') }}" maxlength="2000" autocomplete="off" />
+        <button type="submit" id="send-btn"
+          class="btn-primary px-4 py-2.5 flex-shrink-0">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">{{ _('Send') }}</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const SESSION_ID = 'session_' + Math.random().toString(36).substr(2, 9);
+  const messagesEl = document.getElementById('chat-messages');
+
+  window._T = {
+    "Sorry, I encountered an issue. Please try again.": "{{ _('Sorry, I encountered an issue. Please try again.') }}",
+    "Network error. Please check your connection and try again.": "{{ _('Network error. Please check your connection and try again.') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  function scrollBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function appendMessage(role, text, provider) {
+    const isUser = role === 'user';
+    const div = document.createElement('div');
+    div.className = `flex gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-fade-in`;
+
+    const avatarColor = isUser ? 'bg-slate-600' : 'bg-blue-600';
+    const avatarIcon = isUser
+      ? '<i data-lucide="user" class="w-4 h-4 text-white"></i>'
+      : '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" /></svg>';
+
+    const bubbleStyle = isUser
+      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm ml-auto'
+      : 'glass text-slate-200 rounded-2xl rounded-tl-sm';
+
+    const providerBadge = !isUser && provider
+      ? `<span class="text-xs text-slate-500 mt-1 block">${provider === 'gemini' ? '🤖 AI' : '📋 Reference'}</span>`
+      : '';
+
+    div.innerHTML = `
+      <div class="w-8 h-8 ${avatarColor} rounded-xl flex-shrink-0 flex items-center justify-center">${avatarIcon}</div>
+      <div class="${bubbleStyle} px-4 py-3 max-w-lg">
+        <p class="text-sm leading-relaxed">${text.replace(/\n/g, '<br>')}</p>
+        ${providerBadge}
+      </div>
+    `;
+    messagesEl.appendChild(div);
+    if (window.lucide) lucide.createIcons();
+    scrollBottom();
+  }
+
+  function appendTyping() {
+    const div = document.createElement('div');
+    div.id = 'typing-indicator';
+    div.className = 'flex gap-3 animate-fade-in';
+    div.innerHTML = `
+      <div class="w-8 h-8 bg-blue-600 rounded-xl flex-shrink-0 flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" />
+        </svg>
+      </div>
+      <div class="glass rounded-2xl rounded-tl-sm px-4 py-3">
+        <div class="flex gap-1 items-center h-5">
+          <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay:0ms"></div>
+          <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay:150ms"></div>
+          <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay:300ms"></div>
+        </div>
+      </div>
+    `;
+    messagesEl.appendChild(div);
+    scrollBottom();
+  }
+
+  async function sendMessage(e) {
+    if (e) e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    appendMessage('user', message);
+    appendTyping();
+    document.getElementById('send-btn').disabled = true;
+
+    try {
+      const res = await fetch('/api/public/medical-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, session_id: SESSION_ID }),
+      });
+      const data = await res.json();
+      document.getElementById('typing-indicator')?.remove();
+      if (data.success || data.reply) {
+        appendMessage('assistant', data.reply, data.provider);
+      } else {
+        appendMessage('assistant', _t('Sorry, I encountered an issue. Please try again.'));
+      }
+    } catch {
+      document.getElementById('typing-indicator')?.remove();
+      appendMessage('assistant', _t('Network error. Please check your connection and try again.'));
+    } finally {
+      document.getElementById('send-btn').disabled = false;
+      input.focus();
+    }
+  }
+
+  function sendSuggestion(btn) {
+    document.getElementById('chat-input').value = btn.dataset.msg;
+    sendMessage(null);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+    document.getElementById('chat-input').focus();
+  });
+</script>
+{% endblock %}

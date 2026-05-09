@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Admin Panel') }}{% endblock %}
+{% block page_title %}{{ _('Admin Panel') }}{% endblock %}
+{% block page_subtitle %}{{ _('System administration & monitoring') }}{% endblock %}
+
+{% block content %}
+<div class="grid xl:grid-cols-3 gap-6">
+  <!-- Users management -->
+  <div class="xl:col-span-2 space-y-6">
+    <!-- User management -->
+    <div class="card p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="font-semibold text-white flex items-center gap-2">
+          <i data-lucide="users" class="w-5 h-5 text-blue-400"></i> {{ _('Users') }}
+        </h3>
+        <button onclick="const m=document.getElementById('new-user-modal');m.classList.remove('hidden');m.style.display='flex';" class="btn-primary text-xs py-1.5">
+          <i data-lucide="user-plus" class="w-3 h-3"></i> {{ _('Add User') }}
+        </button>
+      </div>
+      <div id="users-list" class="space-y-2">
+        <div class="text-center py-8 text-slate-500">{{ _('Loading…') }}</div>
+      </div>
+    </div>
+
+    <!-- Contact messages -->
+    <div class="card p-6">
+      <h3 class="font-semibold text-white mb-5 flex items-center gap-2">
+        <i data-lucide="mail" class="w-5 h-5 text-green-400"></i> {{ _('Contact Messages') }}
+      </h3>
+      <div id="messages-list" class="space-y-2">
+        <div class="text-center py-8 text-slate-500">{{ _('Loading…') }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <!-- Fraud attempts -->
+    <div class="card p-6">
+      <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+        <i data-lucide="shield-x" class="w-5 h-5 text-red-400"></i> {{ _('Fraud Attempts') }}
+      </h3>
+      <div id="fraud-list" class="space-y-2">
+        <div class="text-center py-6 text-slate-500 text-sm">{{ _('Loading…') }}</div>
+      </div>
+    </div>
+
+    <!-- Unread Alerts -->
+    <div class="card p-6">
+      <h3 class="font-semibold text-white mb-4 flex items-center gap-2">
+        <i data-lucide="bell" class="w-5 h-5 text-yellow-400"></i> {{ _('Alerts') }}
+      </h3>
+      <div id="alerts-list" class="space-y-2">
+        <div class="text-center py-6 text-slate-500 text-sm">{{ _('Loading…') }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New User Modal -->
+<div id="new-user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl p-6 w-full max-w-md animate-slide-up">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-white">{{ _('Create User') }}</h2>
+      <button onclick="const m=document.getElementById('new-user-modal');m.classList.add('hidden');m.style.display='none';" class="text-slate-500 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="new-user-form" onsubmit="createUser(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Full Name') }} *</label>
+        <input name="name" class="input" placeholder="{{ _('Full name') }}" required />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Email') }} *</label>
+          <input name="email" type="email" class="input" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Username') }} *</label>
+          <input name="username" class="input" required />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Password') }} *</label>
+        <input name="password" type="password" class="input" placeholder="{{ _('Min 8 chars') }}" required minlength="8" />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Role') }} *</label>
+        <select name="role" class="input">
+          <option value="doctor">{{ _('Doctor') }}</option>
+          <option value="nurse">{{ _('Nurse') }}</option>
+          <option value="pharmacy">{{ _('Pharmacy') }}</option>
+          <option value="laboratory">{{ _('Laboratory') }}</option>
+          <option value="admin">{{ _('Admin') }}</option>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="const m=document.getElementById('new-user-modal');m.classList.add('hidden');m.style.display='none';" class="btn-secondary flex-1">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _('Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const roleColors = {
+    admin: 'bg-red-600/20 text-red-400',
+    doctor: 'bg-blue-600/20 text-blue-400',
+    nurse: 'bg-green-600/20 text-green-400',
+    pharmacy: 'bg-purple-600/20 text-purple-400',
+    laboratory: 'bg-cyan-600/20 text-cyan-400',
+  };
+  const riskColors = { minimal:'text-green-400', low:'text-green-400', medium:'text-yellow-400', high:'text-orange-400', critical:'text-red-400 font-bold' };
+
+  window._T = {
+    "Active": "{{ _('Active') }}",
+    "Inactive": "{{ _('Inactive') }}",
+    "No users found": "{{ _('No users found') }}",
+    "No messages": "{{ _('No messages') }}",
+    "No reason": "{{ _('No reason') }}",
+    "No fraud attempts": "{{ _('No fraud attempts') }}",
+    "No unread alerts": "{{ _('No unread alerts') }}",
+    "User created!": "{{ _('User created!') }}",
+    "Failed to create user": "{{ _('Failed to create user') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  async function loadAdmin() {
+    const token = Auth.getToken();
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // Users
+    const users = await fetch('/api/admin/users?limit=20', { headers }).then(r => r.json()).catch(() => null);
+    if (users?.success) {
+      document.getElementById('users-list').innerHTML = users.data.items.map(u => `
+        <div class="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/40">
+          <div class="flex items-center gap-3">
+            <div class="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-300">${u.name[0]}</div>
+            <div>
+              <p class="text-sm font-medium text-white">${u.name}</p>
+              <p class="text-xs text-slate-500">${u.email}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge ${roleColors[u.role] || 'bg-slate-700 text-slate-300'}">${u.role}</span>
+            <span class="badge ${u.is_active ? 'bg-green-600/20 text-green-400' : 'bg-slate-700 text-slate-400'}">${u.is_active ? _t('Active') : _t('Inactive')}</span>
+          </div>
+        </div>
+      `).join('') || `<p class="text-slate-500 text-sm text-center py-4">${_t('No users found')}</p>`;
+    }
+
+    // Messages
+    const msgs = await fetch('/api/admin/messages?limit=5', { headers }).then(r => r.json()).catch(() => null);
+    if (msgs?.success) {
+      document.getElementById('messages-list').innerHTML = msgs.data.items.length
+        ? msgs.data.items.map(m => `
+          <div class="flex items-start justify-between px-4 py-3 rounded-xl bg-slate-900/40">
+            <div>
+              <p class="text-sm font-medium text-white">${m.name} <span class="text-slate-500 font-normal">&lt;${m.email}&gt;</span></p>
+              <p class="text-xs text-slate-400 mt-0.5 truncate max-w-xs">${m.message.substring(0, 80)}…</p>
+            </div>
+            <span class="badge ${m.status === 'new' ? 'bg-yellow-600/20 text-yellow-400' : 'bg-slate-700 text-slate-400'} ml-3 flex-shrink-0">${m.status}</span>
+          </div>
+        `).join('')
+        : `<p class="text-slate-500 text-sm text-center py-4">${_t('No messages')}</p>`;
+    }
+
+    // Fraud
+    const fraud = await fetch('/api/admin/fraud-attempts?limit=5', { headers }).then(r => r.json()).catch(() => null);
+    if (fraud?.success) {
+      document.getElementById('fraud-list').innerHTML = fraud.data.length
+        ? fraud.data.map(f => `
+          <div class="px-3 py-2.5 rounded-lg bg-slate-900/40 border border-slate-700/30">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-mono text-slate-400">${f.ip_address || '—'}</span>
+              <span class="text-xs font-bold ${riskColors[f.risk_level] || 'text-slate-400'}">${f.risk_level?.toUpperCase()} (${f.score})</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5 truncate">${f.reason || _t('No reason')}</p>
+          </div>
+        `).join('')
+        : `<p class="text-slate-500 text-sm text-center py-4">${_t('No fraud attempts')}</p>`;
+    }
+
+    // Alerts
+    const alerts = await fetch('/api/admin/alerts?unread_only=true', { headers }).then(r => r.json()).catch(() => null);
+    if (alerts?.success) {
+      const levelColors = { info:'bg-blue-600/20 text-blue-400', warning:'bg-yellow-600/20 text-yellow-400', critical:'bg-red-600/20 text-red-400' };
+      document.getElementById('alerts-list').innerHTML = alerts.data.length
+        ? alerts.data.map(a => `
+          <div class="px-3 py-2.5 rounded-lg bg-slate-900/40">
+            <div class="flex justify-between items-center">
+              <p class="text-xs font-semibold text-white">${a.title}</p>
+              <span class="badge ${levelColors[a.level] || ''}">${a.level}</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">${a.message}</p>
+          </div>
+        `).join('')
+        : `<p class="text-slate-500 text-sm text-center py-4">${_t('No unread alerts')} ✓</p>`;
+    }
+  }
+
+  function _errMsg(res) {
+    if (!res) return _t('Network error. Please try again.');
+    if (typeof res.detail === 'string') return res.detail;
+    if (Array.isArray(res.detail)) return res.detail.map(e => e.msg).join('; ');
+    return _t('Failed to create user');
+  }
+
+  async function createUser(e) {
+    e.preventDefault();
+    const token = Auth.getToken();
+    const data = Object.fromEntries(new FormData(e.target));
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
+      const res = await r.json();
+      if (r.ok && res.success) {
+        const m = document.getElementById('new-user-modal');
+        m.classList.add('hidden');
+        m.style.display = 'none';
+        e.target.reset();
+        showToast(_t('User created!'));
+        loadAdmin();
+      } else {
+        showToast(_errMsg(res), 'error');
+      }
+    } catch {
+      showToast(_t('Network error. Please try again.'), 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => { loadAdmin(); if (window.lucide) lucide.createIcons(); });
+</script>
+{% endblock %}

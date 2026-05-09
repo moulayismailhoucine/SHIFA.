@@ -1,0 +1,562 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Dashboard") }}{% endblock %}
+{% block page_title %}<span id="dash-title">{{ _("Dashboard") }}</span>{% endblock %}
+{% block page_subtitle %}{{ _("Welcome back") }}, <span id="dash-user-name" class="text-blue-500">—</span>{% endblock %}
+
+{% block header_actions %}
+<a href="/patients" class="btn-primary" id="header-new-patient">
+  <i data-lucide="user-plus" class="w-4 h-4"></i> {{ _("New Patient") }}
+</a>
+{% endblock %}
+
+{% block head %}
+<style>
+  .stat-card { background:var(--bg-card);border:1px solid var(--border);border-radius:1rem;padding:1.25rem;transition:border-color .2s; }
+  .stat-card:hover { border-color:rgba(59,130,246,.4); }
+  .stat-label { font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted); }
+  .stat-value { font-size:2rem;font-weight:800;color:var(--text);margin-top:.25rem; }
+  .section-title { font-size:.9375rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.5rem; }
+  .row-item { display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-radius:.75rem;border:1px solid var(--border);background:var(--bg);transition:background .15s; }
+  .row-item:hover { background:var(--nav-hover-bg); }
+  .avatar { width:2rem;height:2rem;border-radius:.5rem;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#3b82f6;flex-shrink:0; }
+  .avatar.green { background:rgba(34,197,94,.15);color:#22c55e; }
+  .avatar.purple { background:rgba(168,85,247,.15);color:#a855f7; }
+  .item-name { font-size:.875rem;font-weight:500;color:var(--text); }
+  .item-sub { font-size:.75rem;color:var(--text-muted); }
+  .quick-action { display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:.75rem;border:1px solid transparent;text-decoration:none;transition:all .2s; }
+  .quick-action:hover { transform:translateX(4px); }
+  .nurse-card { border-left:3px solid #22c55e;background:var(--bg);border-radius:.75rem;padding:.875rem 1rem;margin-bottom:.5rem; }
+  .nurse-card.vital { border-left-color:#3b82f6; }
+  .vital-chip { display:inline-flex;align-items:center;gap:.25rem;padding:.125rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600;background:rgba(59,130,246,.12);color:#3b82f6;margin-right:.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+  <div class="stat-card group">
+    <div class="flex items-start justify-between">
+      <div><p class="stat-label">{{ _("My Patients") }}</p><p class="stat-value" id="stat-patients">—</p></div>
+      <div class="w-11 h-11 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="users" class="w-5 h-5"></i></div>
+    </div>
+  </div>
+  <div class="stat-card group" id="stat-card-appointments">
+    <div class="flex items-start justify-between">
+      <div><p class="stat-label">{{ _("Today's Appointments") }}</p><p class="stat-value" id="stat-appointments">—</p></div>
+      <div class="w-11 h-11 rounded-xl bg-green-500/15 text-green-500 flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+    </div>
+  </div>
+  <div class="stat-card group" id="stat-card-prescriptions">
+    <div class="flex items-start justify-between">
+      <div><p class="stat-label">{{ _("Prescriptions") }}</p><p class="stat-value" id="stat-prescriptions">—</p></div>
+      <div class="w-11 h-11 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="pill" class="w-5 h-5"></i></div>
+    </div>
+  </div>
+  <div class="stat-card group" id="stat-card-nurse">
+    <div class="flex items-start justify-between">
+      <div><p class="stat-label">{{ _("Nurse Updates") }}</p><p class="stat-value" id="stat-nurse">—</p></div>
+      <div class="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="heart-pulse" class="w-5 h-5"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="grid xl:grid-cols-3 gap-6">
+  <!-- Left: Appointments + Nurse Activity -->
+  <div class="xl:col-span-2 space-y-6">
+
+    <!-- Today's Appointments -->
+    <div class="card p-6" id="appointments-card">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="section-title"><i data-lucide="calendar" class="w-5 h-5 text-blue-500"></i> {{ _("Today's Appointments") }}</h3>
+        <a href="/appointments" class="text-xs text-blue-500 hover:underline">{{ _("View all") }} →</a>
+      </div>
+      <div id="appointments-list" class="space-y-2">
+        <div class="row-item justify-center" style="color:var(--text-muted);font-size:.875rem">{{ _("Loading…") }}</div>
+      </div>
+    </div>
+
+    <!-- Nurse Activity Feed -->
+    <div class="card p-6" id="nurse-activity-card">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="section-title">
+          <i data-lucide="activity" class="w-5 h-5 text-emerald-500"></i>
+          {{ _("Nurse Activity") }}
+          <span class="badge bg-emerald-500/15 text-emerald-500 text-xs ml-1" id="nurse-badge">—</span>
+        </h3>
+        <a href="/patients" class="text-xs text-blue-500 hover:underline">{{ _("View patients") }} →</a>
+      </div>
+      <div id="nurse-tabs" class="flex gap-2 mb-4">
+        <button onclick="switchNurseTab('vitals')" id="tab-vitals" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-500 border border-blue-500/30">{{ _("Vitals") }}</button>
+        <button onclick="switchNurseTab('notes')" id="tab-notes" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted)">{{ _("Notes") }}</button>
+      </div>
+      <div id="nurse-vitals" class="space-y-2">
+        <div style="color:var(--text-muted);font-size:.875rem;text-align:center;padding:1rem">{{ _("Loading vitals…") }}</div>
+      </div>
+      <div id="nurse-notes" class="space-y-2 hidden">
+        <div style="color:var(--text-muted);font-size:.875rem;text-align:center;padding:1rem">{{ _("Loading notes…") }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Quick Actions + My Schedule -->
+  <div class="space-y-6">
+    <!-- Quick Actions -->
+    <div class="card p-6">
+      <h3 class="section-title mb-4"><i data-lucide="zap" class="w-5 h-5 text-yellow-500"></i> {{ _("Quick Actions") }}</h3>
+      <div class="space-y-2">
+        <a href="/appointments" id="quick-action-appointment" class="quick-action bg-blue-500/10 border-blue-500/20 hover:bg-blue-500/20">
+          <i data-lucide="calendar-plus" class="w-4 h-4 text-blue-500"></i>
+          <span class="text-sm font-medium" style="color:var(--text)">{{ _("Book Appointment") }}</span>
+        </a>
+        <a href="/patients" id="quick-action-patients" class="quick-action bg-green-500/10 border-green-500/20 hover:bg-green-500/20">
+          <i data-lucide="user-plus" class="w-4 h-4 text-green-500"></i>
+          <span class="text-sm font-medium" style="color:var(--text)">{{ _("View Patients") }}</span>
+        </a>
+        <a href="/ordonnances" id="quick-action-prescription" class="quick-action bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20">
+          <i data-lucide="pill" class="w-4 h-4 text-purple-500"></i>
+          <span class="text-sm font-medium" style="color:var(--text)">{{ _("New Prescription") }}</span>
+        </a>
+        <a href="/medical-records" id="quick-action-records" class="quick-action bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20">
+          <i data-lucide="file-text" class="w-4 h-4 text-orange-500"></i>
+          <span class="text-sm font-medium" style="color:var(--text)">{{ _("Medical Records") }}</span>
+        </a>
+        <a href="/chat" class="quick-action bg-cyan-500/10 border-cyan-500/20 hover:bg-cyan-500/20">
+          <i data-lucide="message-circle" class="w-4 h-4 text-cyan-500"></i>
+          <span class="text-sm font-medium" style="color:var(--text)">{{ _("AI Medical Chat") }}</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- My Nurses (doctor only) -->
+    <div class="card p-6" id="my-nurses-card">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="section-title"><i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-500"></i> {{ _("My Nurses") }}</h3>
+        <button onclick="openNurseModal()" class="btn-primary text-xs py-1.5">
+          <i data-lucide="user-plus" class="w-3 h-3"></i> {{ _("Add Nurse") }}
+        </button>
+      </div>
+      <div id="my-nurses-list" class="space-y-2" style="font-size:.875rem;color:var(--text-muted)">{{ _("Loading…") }}</div>
+    </div>
+
+    <!-- My Schedule -->
+    <div class="card p-6" id="schedule-card">
+      <h3 class="section-title mb-4"><i data-lucide="clock" class="w-5 h-5 text-blue-400"></i> {{ _("My Schedule") }}</h3>
+      <div id="doctor-schedule" style="font-size:.875rem;color:var(--text-muted)">{{ _("Loading…") }}</div>
+    </div>
+
+    <!-- System Status (admin only) -->
+    <div class="card p-6" id="system-status-card">
+      <h3 class="section-title mb-4"><i data-lucide="server" class="w-5 h-5 text-green-500"></i> {{ _("System Status") }}</h3>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-sm"><span style="color:var(--text-muted)">{{ _("Backend API") }}</span><span class="badge bg-green-500/15 text-green-500" id="api-status">{{ _("Checking…") }}</span></div>
+        <div class="flex items-center justify-between text-sm"><span style="color:var(--text-muted)">{{ _("Database") }}</span><span class="badge bg-green-500/15 text-green-500" id="db-status">{{ _("Checking…") }}</span></div>
+        <div class="flex items-center justify-between text-sm"><span style="color:var(--text-muted)">{{ _("AI Chat") }}</span><span class="badge bg-yellow-500/15 text-yellow-500" id="ai-status">{{ _("Fallback") }}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+<!-- Add Nurse Modal -->
+<div id="nurse-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl p-6 w-full max-w-md animate-slide-up">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-white">{{ _("Add Nurse") }}</h2>
+      <button onclick="closeNurseModal()" class="text-slate-500 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="nurse-form" onsubmit="createNurse(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Full Name") }} *</label>
+        <input name="name" class="input" placeholder="{{ _('Full name') }}" required />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Email") }} *</label>
+          <input name="email" type="email" class="input" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Username") }} *</label>
+          <input name="username" class="input" required />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Password") }} *</label>
+        <input name="password" type="password" class="input" placeholder="{{ _('Min 8 chars') }}" required minlength="8" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Department") }}</label>
+          <input name="department" class="input" placeholder="{{ _('e.g. ICU, Emergency') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Shift") }}</label>
+          <select name="shift" class="input">
+            <option value="">—</option>
+            <option value="Day">{{ _("Day") }}</option>
+            <option value="Night">{{ _("Night") }}</option>
+            <option value="Evening">{{ _("Evening") }}</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Phone") }}</label>
+        <input name="phone" type="tel" class="input" placeholder="{{ _('+1 234 567 8900') }}" />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("License Number") }}</label>
+        <input name="license_number" class="input font-mono" placeholder="{{ _('License') }}" />
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeNurseModal()" class="btn-secondary flex-1">{{ _("Cancel") }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _("Create") }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  window._T = {
+    "Admin Dashboard": "{{ _("Admin Dashboard") }}",
+    "Nurse Dashboard": "{{ _("Nurse Dashboard") }}",
+    "Doctor Dashboard": "{{ _("Doctor Dashboard") }}",
+    "No appointments yet": "{{ _("No appointments yet") }}",
+    "Failed to load": "{{ _("Failed to load") }}",
+    "Patient": "{{ _("Patient") }}",
+    "No vitals recorded yet": "{{ _("No vitals recorded yet") }}",
+    "No nurse notes yet": "{{ _("No nurse notes yet") }}",
+    "No schedule data": "{{ _("No schedule data") }}",
+    "No days set": "{{ _("No days set") }}",
+    "Hours": "{{ _("Hours") }}",
+    "Break": "{{ _("Break") }}",
+    "Per patient": "{{ _("Per patient") }}",
+    "Specialty": "{{ _("Specialty") }}",
+    "Online": "{{ _("Online") }}",
+    "Offline": "{{ _("Offline") }}",
+    "Connected": "{{ _("Connected") }}",
+    "Unreachable": "{{ _("Unreachable") }}",
+    "My Nurses": "{{ _("My Nurses") }}",
+    "Add Nurse": "{{ _("Add Nurse") }}",
+    "No nurses yet": "{{ _("No nurses yet") }}",
+    "Nurse created successfully!": "{{ _("Nurse created successfully!") }}",
+    "Failed to create nurse": "{{ _("Failed to create nurse") }}",
+    "Failed to load nurses": "{{ _("Failed to load nurses") }}",
+    "Deactivate": "{{ _("Deactivate") }}",
+    "Activate": "{{ _("Activate") }}",
+    "Toggle": "{{ _("Toggle") }}",
+    "Delete": "{{ _("Delete") }}",
+    "Nurse": "{{ _("Nurse") }}",
+    "Department": "{{ _("Department") }}",
+    "License Number": "{{ _("License Number") }}",
+    "Nurse deleted": "{{ _("Nurse deleted") }}",
+    "Failed to delete nurse": "{{ _("Failed to delete nurse") }}",
+  };
+
+  const user = Auth.getUser();
+  const role = user.role || 'doctor';
+
+  // Personalise header
+  const nameEl = document.getElementById('dash-user-name');
+  if (nameEl && user.name) nameEl.textContent = user.name;
+  document.getElementById('dash-title').textContent =
+    role === 'admin' ? _t('Admin Dashboard') :
+    role === 'nurse' ? _t('Nurse Dashboard') :
+    role === 'laboratory' ? _t('Laboratory Dashboard') :
+    _t('Doctor Dashboard');
+
+  // Hide system status for non-admin
+  if (role !== 'admin') {
+    const sc = document.getElementById('system-status-card');
+    if (sc) sc.style.display = 'none';
+  }
+  // Hide My Nurses for non-doctors
+  if (role !== 'doctor') {
+    const nc = document.getElementById('my-nurses-card');
+    if (nc) nc.style.display = 'none';
+  }
+  // Hide irrelevant sections for laboratory users
+  if (role === 'laboratory') {
+    const ids = ['stat-card-appointments','stat-card-prescriptions','stat-card-nurse','appointments-card','nurse-activity-card','quick-action-appointment','quick-action-prescription','quick-action-records'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  }
+
+  const H = { Authorization: `Bearer ${Auth.getToken()}` };
+
+  const statusColors = {
+    pending:'bg-yellow-500/15 text-yellow-500', confirmed:'bg-green-500/15 text-green-500',
+    cancelled:'bg-red-500/15 text-red-500', completed:'bg-blue-500/15 text-blue-500', no_show:'bg-gray-500/15 text-gray-500'
+  };
+
+  function empty(msg) {
+    return `<div class="row-item justify-center" style="color:var(--text-muted);font-size:.875rem">${msg}</div>`;
+  }
+
+  // ── Appointments ───────────────────────────────────────────────────
+  async function loadAppointments() {
+    try {
+      const r = await fetch('/api/appointments/?limit=8', { headers: H }).then(x => x.json());
+      const el = document.getElementById('appointments-list');
+      if (!r.success || !r.data.items.length) { el.innerHTML = empty(_t('No appointments yet')); return; }
+      document.getElementById('stat-appointments').textContent = r.data.total;
+      el.innerHTML = r.data.items.slice(0,6).map(a => `
+        <div class="row-item">
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="avatar">${(a.guest_name || a.patient_name || '#')[0]}</div>
+            <div>
+              <p class="item-name">${a.guest_name || a.patient_name || _t('Patient') +' #'+a.patient_id}</p>
+              <p class="item-sub">${new Date(a.scheduled_at).toLocaleString()} · ${a.reason || '—'}</p>
+            </div>
+          </div>
+          <span class="badge ${statusColors[a.status]||'bg-gray-500/15 text-gray-500'}">${a.status}</span>
+        </div>`).join('');
+    } catch { document.getElementById('appointments-list').innerHTML = empty(_t('Failed to load')); }
+  }
+
+  // ── Patients count ─────────────────────────────────────────────────
+  async function loadPatients() {
+    try {
+      const r = await fetch('/api/patients/?limit=1', { headers: H }).then(x => x.json());
+      if (r.success) document.getElementById('stat-patients').textContent = r.data.total;
+    } catch {}
+  }
+
+  // ── Prescriptions count ────────────────────────────────────────────
+  async function loadPrescriptions() {
+    try {
+      const r = await fetch('/api/ordonnances/?limit=1', { headers: H }).then(x => x.json());
+      if (r.success) document.getElementById('stat-prescriptions').textContent = r.data.total ?? r.data.length ?? '—';
+    } catch {}
+  }
+
+  // ── Nurse Vitals ───────────────────────────────────────────────────
+  let allVitals = [], allNotes = [];
+
+  async function loadNurseData() {
+    // load all patients first, then fetch vitals/notes for first few
+    try {
+      const pr = await fetch('/api/patients/?limit=20', { headers: H }).then(x => x.json());
+      if (!pr.success) return;
+      const patients = pr.data.items || pr.data;
+
+      // Fetch vitals & notes for up to 5 patients in parallel
+      const targets = patients.slice(0,5);
+      const vitalsPromises = targets.map(p =>
+        fetch(`/api/vitals/${p.id}`, { headers: H }).then(x => x.json()).catch(() => null)
+      );
+      const notesPromises = targets.map(p =>
+        fetch(`/api/nurse-notes/${p.id}`, { headers: H }).then(x => x.json()).catch(() => null)
+      );
+
+      const [vitalsResults, notesResults] = await Promise.all([
+        Promise.all(vitalsPromises),
+        Promise.all(notesPromises),
+      ]);
+
+      // Flatten with patient name
+      vitalsResults.forEach((r, i) => {
+        if (r && r.success && r.data) {
+          const vList = Array.isArray(r.data) ? r.data : [r.data];
+          vList.forEach(v => { v._patient = targets[i]; allVitals.push(v); });
+        }
+      });
+      notesResults.forEach((r, i) => {
+        if (r && r.success && r.data) {
+          const nList = Array.isArray(r.data) ? r.data : [r.data];
+          nList.forEach(n => { n._patient = targets[i]; allNotes.push(n); });
+        }
+      });
+
+      const total = allVitals.length + allNotes.length;
+      document.getElementById('stat-nurse').textContent = total;
+      document.getElementById('nurse-badge').textContent = total;
+
+      renderVitals();
+      renderNotes();
+    } catch(e) { console.warn('nurse data', e); }
+  }
+
+  function renderVitals() {
+    const el = document.getElementById('nurse-vitals');
+    if (!allVitals.length) { el.innerHTML = empty(_t('No vitals recorded yet')); return; }
+    el.innerHTML = allVitals.slice(0,6).map(v => `
+      <div class="nurse-card vital">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.375rem">
+          <span style="font-size:.8125rem;font-weight:600;color:var(--text)">${v._patient?.name || _t('Patient')}</span>
+          <span style="font-size:.7rem;color:var(--text-muted)">${v.recorded_at ? new Date(v.recorded_at).toLocaleString() : ''}</span>
+        </div>
+        <div>
+          ${v.blood_pressure ? `<span class="vital-chip">BP ${v.blood_pressure}</span>` : ''}
+          ${v.heart_rate ? `<span class="vital-chip">HR ${v.heart_rate}</span>` : ''}
+          ${v.temperature ? `<span class="vital-chip">Temp ${v.temperature}°C</span>` : ''}
+          ${v.oxygen_saturation ? `<span class="vital-chip">SpO₂ ${v.oxygen_saturation}%</span>` : ''}
+          ${v.glucose ? `<span class="vital-chip">Gluc ${v.glucose}</span>` : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  function renderNotes() {
+    const el = document.getElementById('nurse-notes');
+    if (!allNotes.length) { el.innerHTML = empty(_t('No nurse notes yet')); return; }
+    el.innerHTML = allNotes.slice(0,6).map(n => `
+      <div class="nurse-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.375rem">
+          <span style="font-size:.8125rem;font-weight:600;color:var(--text)">${n._patient?.name || _t('Patient')}</span>
+          <span style="font-size:.7rem;color:var(--text-muted)">${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</span>
+        </div>
+        <p style="font-size:.8125rem;color:var(--text-muted);line-height:1.5">${n.note || n.content || '—'}</p>
+      </div>`).join('');
+  }
+
+  function switchNurseTab(tab) {
+    const vEl = document.getElementById('nurse-vitals');
+    const nEl = document.getElementById('nurse-notes');
+    const tV = document.getElementById('tab-vitals');
+    const tN = document.getElementById('tab-notes');
+    const active = 'bg-blue-500/15 text-blue-500 border border-blue-500/30';
+    const inactive = 'text-muted';
+
+    if (tab === 'vitals') {
+      vEl.classList.remove('hidden'); nEl.classList.add('hidden');
+      tV.className = `px-3 py-1.5 rounded-lg text-xs font-semibold ${active}`;
+      tN.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold';
+      tN.style.cssText = 'background:var(--bg);border:1px solid var(--border);color:var(--text-muted)';
+    } else {
+      nEl.classList.remove('hidden'); vEl.classList.add('hidden');
+      tN.className = `px-3 py-1.5 rounded-lg text-xs font-semibold ${active}`;
+      tN.style.cssText = '';
+      tV.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold';
+      tV.style.cssText = 'background:var(--bg);border:1px solid var(--border);color:var(--text-muted)';
+    }
+  }
+
+  // ── Doctor schedule card ───────────────────────────────────────────
+  function renderSchedule() {
+    const sc = document.getElementById('doctor-schedule');
+    const dr = user.doctor;
+    if (!dr && role !== 'doctor') { document.getElementById('schedule-card').style.display = 'none'; return; }
+    if (!dr) { sc.textContent = _t('No schedule data'); return; }
+    const days = (dr.working_days || '').split(',').map(d => d.trim()).filter(Boolean);
+    const dayBadge = d => `<span style="display:inline-block;padding:.125rem .5rem;border-radius:.375rem;font-size:.7rem;font-weight:600;background:rgba(59,130,246,.12);color:#3b82f6;margin:.1rem">${d}</span>`;
+    sc.innerHTML = `
+      <div style="margin-bottom:.75rem">${days.map(dayBadge).join('') || '<span style="color:var(--text-muted)">' + _t('No days set') + '</span>'}</div>
+      <div style="display:flex;flex-direction:column;gap:.375rem;font-size:.8125rem">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">${_t('Hours')}</span><span style="color:var(--text)">${dr.working_hours_start||'—'} – ${dr.working_hours_end||'—'}</span></div>
+        ${dr.break_start ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">${_t('Break')}</span><span style="color:var(--text)">${dr.break_start} – ${dr.break_end}</span></div>` : ''}
+        ${dr.treatment_time ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">${_t('Per patient')}</span><span style="color:var(--text)">${dr.treatment_time} min</span></div>` : ''}
+        ${dr.specialty ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">${_t('Specialty')}</span><span style="color:var(--text)">${dr.specialty}</span></div>` : ''}
+      </div>`;
+  }
+
+  // ── Health (admin only) ───────────────────────────────────────────
+  async function loadHealth() {
+    if (role !== 'admin') return;
+    try {
+      const h = await fetch('/health').then(r => r.json());
+      document.getElementById('api-status').textContent = '● ' + _t('Online');
+      document.getElementById('db-status').textContent = h.database === 'connected' ? '● ' + _t('Connected') : '⚠ ' + _t('Unreachable');
+    } catch { document.getElementById('api-status').textContent = '⚠ ' + _t('Offline'); }
+  }
+
+  // ── My Nurses ─────────────────────────────────────────────────────
+  function openNurseModal() {
+    const m = document.getElementById('nurse-modal');
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+  }
+  function closeNurseModal() {
+    const m = document.getElementById('nurse-modal');
+    m.classList.add('hidden');
+    m.style.display = 'none';
+  }
+
+  function _errMsg(res) {
+    if (!res) return 'Network error. Please try again.';
+    if (typeof res.detail === 'string') return res.detail;
+    if (Array.isArray(res.detail)) return res.detail.map(e => e.msg).join('; ');
+    return 'Failed to create nurse';
+  }
+
+  async function createNurse(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    if (!data.shift) delete data.shift;
+    if (!data.department) delete data.department;
+    if (!data.phone) delete data.phone;
+    if (!data.license_number) delete data.license_number;
+    try {
+      const r = await fetch('/api/doctor/nurses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
+        body: JSON.stringify(data),
+      });
+      const res = await r.json();
+      if (r.ok && res.success) {
+        closeNurseModal();
+        e.target.reset();
+        showToast(_t('Nurse created successfully!'));
+        loadMyNurses();
+      } else {
+        showToast(_errMsg(res), 'error');
+      }
+    } catch {
+      showToast(_t('Network error. Please try again.'), 'error');
+    }
+  }
+
+  async function loadMyNurses() {
+    try {
+      const r = await fetch('/api/doctor/nurses?limit=20', { headers: H }).then(x => x.json());
+      const el = document.getElementById('my-nurses-list');
+      if (!r.success || !r.data.items.length) {
+        el.innerHTML = empty(_t('No nurses yet'));
+        return;
+      }
+      el.innerHTML = r.data.items.map(n => `
+        <div class="row-item" style="padding:.625rem 1rem">
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="avatar green">${n.name.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase()}</div>
+            <div>
+              <p class="item-name">${n.name}</p>
+              <p class="item-sub">${n.department || '—'} · ${n.shift || '—'}</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span class="badge ${n.is_active ? 'bg-green-500/15 text-green-500' : 'bg-slate-700/50 text-slate-400'}">${n.is_active ? 'Active' : 'Inactive'}</span>
+            <button onclick="deleteNurse(${n.id})" title="${'Delete'}"
+              class="p-1.5 rounded-lg hover:bg-red-600/15 text-slate-400 hover:text-red-400 transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>`).join('');
+      if (window.lucide) lucide.createIcons();
+    } catch { document.getElementById('my-nurses-list').innerHTML = empty(_t('Failed to load nurses')); }
+  }
+
+  async function deleteNurse(nurseId) {
+    if (!confirm(_t('Delete') + ' ?')) return;
+    try {
+      const r = await fetch(`/api/doctor/nurses/${nurseId}`, {
+        method: 'DELETE',
+        headers: H,
+      });
+      if (r.ok) { showToast(_t('Nurse deleted')); loadMyNurses(); }
+      else showToast(_t('Failed to delete nurse'), 'error');
+    } catch { showToast(_t('Network error. Please try again.'), 'error'); }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────
+  renderSchedule();
+  loadAppointments();
+  loadPatients();
+  loadPrescriptions();
+  loadNurseData();
+  loadHealth();
+  if (role === 'doctor') loadMyNurses();
+</script>
+{% endblock %}

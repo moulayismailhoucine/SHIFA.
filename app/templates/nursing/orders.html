@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Nursing Orders') }}{% endblock %}
+{% block page_title %}{{ _('Nursing Orders') }}{% endblock %}
+{% block page_subtitle %}{{ _('Tasks assigned by doctors') }}{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+  <!-- Stats -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Pending') }}</span>
+      <span class="stat-val" id="stat-pending">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('In Progress') }}</span>
+      <span class="stat-val" id="stat-in-progress">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Completed') }}</span>
+      <span class="stat-val" id="stat-completed">—</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-lbl">{{ _('Total') }}</span>
+      <span class="stat-val" id="stat-total">—</span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card p-4">
+    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="setFilter('')" id="btn-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-500 border border-blue-500/30">{{ _('All') }}</button>
+        <button onclick="setFilter('pending')" id="btn-pending" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted)">{{ _('Pending') }}</button>
+        <button onclick="setFilter('in_progress')" id="btn-in_progress" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted)">{{ _('In Progress') }}</button>
+        <button onclick="setFilter('completed')" id="btn-completed" class="px-3 py-1.5 rounded-lg text-xs font-semibold" style="background:var(--bg);border:1px solid var(--border);color:var(--text-muted)">{{ _('Completed') }}</button>
+      </div>
+      <input id="search-input" oninput="filterOrders()" placeholder="{{ _('Search patient or title…') }}" class="input" style="max-width:16rem" />
+    </div>
+  </div>
+
+  <!-- Orders list -->
+  <div class="card p-0 overflow-hidden" id="orders-card">
+    <div id="orders-table" class="overflow-x-auto">
+      <div class="p-8 text-center" style="color:var(--text-muted)">
+        <i data-lucide="heart-pulse" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+        <p class="text-sm">{{ _('Loading orders…') }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Modal -->
+<div id="modal-status" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:28rem;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _('Update Order Status') }}</h2>
+      <button onclick="closeModal('modal-status')" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="form-status" onsubmit="saveStatus(event)" class="space-y-3">
+      <input type="hidden" id="status-order-id" />
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Status') }}</label>
+        <select name="status" id="status-select" class="input">
+          <option value="pending">{{ _('Pending') }}</option>
+          <option value="in_progress">{{ _('In Progress') }}</option>
+          <option value="completed">{{ _('Completed') }}</option>
+          <option value="cancelled">{{ _('Cancelled') }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Completion Note') }}</label>
+        <textarea name="completion_note" id="status-note" rows="3" class="input" placeholder="{{ _('Add a note about the work done…') }}"></textarea>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('modal-status')" class="btn-secondary flex-1 justify-center">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center" style="background:#059669">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _('Update') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Record Modal -->
+<div id="modal-record" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:32rem;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _('Add Patient Record') }}</h2>
+      <button onclick="closeModal('modal-record')" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <input type="hidden" id="record-patient-id" />
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Patient') }}</label>
+        <div id="record-patient-name" class="input text-sm" style="background:var(--bg);color:var(--text-muted)">—</div>
+      </div>
+      <!-- Vitals -->
+      <div class="card p-4" style="background:var(--bg)">
+        <h3 class="section-title mb-3 text-sm"><i data-lucide="activity" class="w-4 h-4 text-blue-500"></i> {{ _('Vitals') }}</h3>
+        <form id="form-vitals" onsubmit="saveVitals(event)" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Temperature') }} (°C)</label>
+            <input name="temperature" type="number" step="0.1" class="input" placeholder="36.5" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Heart Rate') }} (bpm)</label>
+            <input name="heart_rate" type="number" class="input" placeholder="72" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Blood Pressure') }}</label>
+            <input name="blood_pressure" class="input" placeholder="120/80" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('O2 Saturation') }} (%)</label>
+            <input name="oxygen_saturation" type="number" step="0.1" class="input" placeholder="98" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Glucose') }} (mg/dL)</label>
+            <input name="glucose" type="number" step="0.1" class="input" placeholder="90" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Weight') }} (kg)</label>
+            <input name="weight" type="number" step="0.1" class="input" placeholder="70" />
+          </div>
+          <div class="col-span-2">
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Notes') }}</label>
+            <textarea name="notes" class="input" rows="2" placeholder="{{ _('Vital signs observations…') }}"></textarea>
+          </div>
+          <div class="col-span-2">
+            <button type="submit" class="btn-primary text-xs" style="padding:.35rem .75rem">
+              <i data-lucide="save" class="w-3 h-3"></i> {{ _('Save Vitals') }}
+            </button>
+          </div>
+        </form>
+      </div>
+      <!-- Nurse Note -->
+      <div class="card p-4" style="background:var(--bg)">
+        <h3 class="section-title mb-3 text-sm"><i data-lucide="notebook-pen" class="w-4 h-4 text-emerald-500"></i> {{ _('Nurse Note') }}</h3>
+        <form id="form-note" onsubmit="saveNote(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">{{ _('Note') }} *</label>
+            <textarea name="note" class="input" rows="3" placeholder="{{ _('Describe the patient condition, care given, or any observations…') }}" required minlength="5"></textarea>
+          </div>
+          <div>
+            <button type="submit" class="btn-primary text-xs" style="padding:.35rem .75rem;background:#059669">
+              <i data-lucide="save" class="w-3 h-3"></i> {{ _('Save Note') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.25rem; display: flex; flex-direction: column; gap: .25rem; }
+  .stat-val { font-size: 1.5rem; font-weight: 800; color: var(--text); }
+  .stat-lbl { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+  .badge { display: inline-flex; align-items: center; padding: .125rem .5rem; border-radius: 9999px; font-size: .7rem; font-weight: 600; }
+  .table-row-hover:hover { background: var(--nav-hover-bg); }
+</style>
+
+<script>
+  window._T = {
+    "Failed to load orders": "{{ _('Failed to load orders') }}",
+    "Pending": "{{ _('Pending') }}",
+    "In Progress": "{{ _('In Progress') }}",
+    "Completed": "{{ _('Completed') }}",
+    "Cancelled": "{{ _('Cancelled') }}",
+    "Routine": "{{ _('Routine') }}",
+    "Urgent": "{{ _('Urgent') }}",
+    "STAT": "{{ _('STAT') }}",
+    "No nursing orders found.": "{{ _('No nursing orders found.') }}",
+    "Patient": "{{ _('Patient') }}",
+    "Task": "{{ _('Task') }}",
+    "Priority": "{{ _('Priority') }}",
+    "Status": "{{ _('Status') }}",
+    "Due": "{{ _('Due') }}",
+    "Actions": "{{ _('Actions') }}",
+    "Patient #": "{{ _('Patient #') }}",
+    "Update status": "{{ _('Update status') }}",
+    "Status updated!": "{{ _('Status updated!') }}",
+    "Failed to update": "{{ _('Failed to update') }}",
+    "Network error": "{{ _('Network error') }}",
+    "Add record": "{{ _('Add record') }}",
+    "Patient": "{{ _('Patient') }}",
+    "Vitals recorded!": "{{ _('Vitals recorded!') }}",
+    "Failed to save vitals": "{{ _('Failed to save vitals') }}",
+    "Note saved!": "{{ _('Note saved!') }}",
+    "Failed to save note": "{{ _('Failed to save note') }}",
+    "Add Patient Record": "{{ _('Add Patient Record') }}",
+    "Vitals": "{{ _('Vitals') }}",
+    "Nurse Note": "{{ _('Nurse Note') }}",
+    "Save Vitals": "{{ _('Save Vitals') }}",
+    "Save Note": "{{ _('Save Note') }}",
+    "Temperature": "{{ _('Temperature') }}",
+    "Heart Rate": "{{ _('Heart Rate') }}",
+    "Blood Pressure": "{{ _('Blood Pressure') }}",
+    "O2 Saturation": "{{ _('O2 Saturation') }}",
+    "Glucose": "{{ _('Glucose') }}",
+    "Weight": "{{ _('Weight') }}",
+    "Notes": "{{ _('Notes') }}",
+    "Note": "{{ _('Note') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  const H = { Authorization: `Bearer ${Auth.getToken()}` };
+  let allOrders = [];
+  let currentFilter = '';
+
+  async function loadOrders() {
+    const statusParam = currentFilter ? `?status=${currentFilter}` : '';
+    const res = await fetch(`/api/nursing-orders${statusParam}`, { headers: H })
+      .then(r => r.json()).catch(() => null);
+    if (!res?.success) {
+      document.getElementById('orders-table').innerHTML =
+        `<div class="p-8 text-center" style="color:var(--text-muted)">
+           <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2 text-red-400"></i>
+           <p class="text-sm">${_t('Failed to load orders')}.</p>
+         </div>`;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+    allOrders = res.data || [];
+    updateStats(allOrders);
+    renderTable(allOrders);
+  }
+
+  function updateStats(orders) {
+    const counts = { pending: 0, 'in_progress': 0, completed: 0, cancelled: 0 };
+    orders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+    document.getElementById('stat-pending').textContent = counts.pending;
+    document.getElementById('stat-in-progress').textContent = counts['in_progress'];
+    document.getElementById('stat-completed').textContent = counts.completed;
+    document.getElementById('stat-total').textContent = orders.length;
+  }
+
+  function statusBadge(status) {
+    const map = {
+      pending: { cls: 'bg-yellow-500/15 text-yellow-500', label: _t('Pending') },
+      in_progress: { cls: 'bg-blue-500/15 text-blue-500', label: _t('In Progress') },
+      completed: { cls: 'bg-green-500/15 text-green-500', label: _t('Completed') },
+      cancelled: { cls: 'bg-red-500/15 text-red-500', label: _t('Cancelled') },
+    };
+    const s = map[status] || { cls: 'bg-gray-500/15 text-gray-500', label: status };
+    return `<span class="badge ${s.cls}">${s.label}</span>`;
+  }
+
+  function priorityBadge(priority) {
+    const map = {
+      routine: { cls: 'bg-slate-500/15 text-slate-400', label: _t('Routine') },
+      urgent: { cls: 'bg-orange-500/15 text-orange-500', label: _t('Urgent') },
+      stat: { cls: 'bg-red-500/15 text-red-500', label: _t('STAT') },
+    };
+    const p = map[priority] || { cls: 'bg-gray-500/15 text-gray-500', label: priority };
+    return `<span class="badge ${p.cls}">${p.label}</span>`;
+  }
+
+  function renderTable(orders) {
+    if (!orders.length) {
+      document.getElementById('orders-table').innerHTML =
+        `<div class="p-8 text-center" style="color:var(--text-muted)">
+           <i data-lucide="heart-pulse" class="w-10 h-10 mx-auto mb-3 opacity-30"></i>
+           <p class="text-sm">${_t('No nursing orders found.')}.</p>
+         </div>`;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const rows = orders.map(o => {
+      const due = o.due_at ? new Date(o.due_at).toLocaleString() : '—';
+      return `
+        <tr class="table-row-hover border-t" style="border-color:var(--border)">
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center text-xs font-bold text-blue-400 flex-shrink-0">${(o.patient_name || 'P')[0]}</div>
+              <div>
+                <p class="font-medium text-sm">${o.patient_name || _t('Patient #') + o.patient_id}</p>
+                <p class="text-xs" style="color:var(--text-muted)">Dr. ${o.doctor_name || '—'}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-3 text-sm">
+            <p class="font-medium">${o.title}</p>
+            <p class="text-xs" style="color:var(--text-muted)">${o.order_type}${o.medication_method ? ' · ' + o.medication_method : ''}</p>
+          </td>
+          <td class="px-5 py-3">${priorityBadge(o.priority)}</td>
+          <td class="px-5 py-3">${statusBadge(o.status)}</td>
+          <td class="px-5 py-3 text-sm" style="color:var(--text-muted)">${due}</td>
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-1">
+              <button onclick="openRecordModal(${o.id})" title="${_t('Add record')}"
+                class="p-1.5 rounded-lg hover:bg-emerald-600/15 text-slate-400 hover:text-emerald-400 transition-colors">
+                <i data-lucide="file-plus" class="w-4 h-4"></i>
+              </button>
+              <button onclick="openStatusModal(${o.id})" title="${_t('Update status')}"
+                class="p-1.5 rounded-lg hover:bg-blue-600/15 text-slate-400 hover:text-blue-400 transition-colors">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('orders-table').innerHTML = `
+      <table class="w-full text-sm">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Patient')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Task')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Priority')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Status')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Due')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Actions')}</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function filterOrders() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const filtered = allOrders.filter(o =>
+      (o.title || '').toLowerCase().includes(q) ||
+      (o.patient_name || '').toLowerCase().includes(q) ||
+      (o.doctor_name || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  }
+
+  function setFilter(status) {
+    currentFilter = status;
+    ['all','pending','in_progress','completed'].forEach(s => {
+      const btn = document.getElementById('btn-' + s);
+      if (s === status || (s === 'all' && !status)) {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-500 border border-blue-500/30';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold';
+        btn.style.cssText = 'background:var(--bg);border:1px solid var(--border);color:var(--text-muted)';
+      }
+    });
+    loadOrders();
+  }
+
+  function openModal(id) {
+    const m = document.getElementById(id);
+    m.style.display = 'flex';
+    m.classList.remove('hidden');
+  }
+  function closeModal(id) {
+    const m = document.getElementById(id);
+    m.style.display = 'none';
+    m.classList.add('hidden');
+  }
+
+  function openStatusModal(orderId) {
+    const o = allOrders.find(x => x.id === orderId);
+    if (!o) return;
+    document.getElementById('status-order-id').value = o.id;
+    document.getElementById('status-select').value = o.status;
+    document.getElementById('status-note').value = o.completion_note || '';
+    openModal('modal-status');
+  }
+
+  async function saveStatus(e) {
+    e.preventDefault();
+    const id = document.getElementById('status-order-id').value;
+    const data = Object.fromEntries(new FormData(e.target));
+    if (!data.completion_note) delete data.completion_note;
+
+    const res = await fetch(`/api/nursing-orders/${id}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()).catch(() => ({ success: false, detail: _t('Network error') }));
+
+    if (res.success) {
+      closeModal('modal-status');
+      showToast(_t('Status updated!'));
+      loadOrders();
+    } else {
+      showToast(res.detail || _t('Failed to update'), 'error');
+    }
+  }
+
+  function openRecordModal(orderId) {
+    const o = allOrders.find(x => x.id === orderId);
+    if (!o) return;
+    document.getElementById('record-patient-id').value = o.patient_id;
+    document.getElementById('record-patient-name').textContent = o.patient_name || (_t('Patient #') + o.patient_id);
+    document.getElementById('form-vitals').reset();
+    document.getElementById('form-note').reset();
+    openModal('modal-record');
+  }
+
+  async function saveVitals(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.patient_id = parseInt(document.getElementById('record-patient-id').value);
+    for (const key in data) {
+      if (data[key] === '') delete data[key];
+      else if (key === 'heart_rate') data[key] = parseInt(data[key]);
+      else if (!['blood_pressure', 'notes'].includes(key)) data[key] = parseFloat(data[key]);
+    }
+    const res = await fetch('/api/vitals', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()).catch(() => ({ success: false, detail: _t('Network error') }));
+    if (res && res.success) {
+      showToast(_t('Vitals recorded!'));
+      e.target.reset();
+    } else {
+      showToast(res.detail || _t('Failed to save vitals'), 'error');
+    }
+  }
+
+  async function saveNote(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.patient_id = parseInt(document.getElementById('record-patient-id').value);
+    const res = await fetch('/api/nurse-notes', {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(r => r.json()).catch(() => ({ success: false, detail: _t('Network error') }));
+    if (res && res.success) {
+      showToast(_t('Note saved!'));
+      e.target.reset();
+    } else {
+      showToast(res.detail || _t('Failed to save note'), 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadOrders);
+</script>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Lab Results') }}{% endblock %}
+{% block page_title %}{{ _('Lab Results') }}{% endblock %}
+{% block page_subtitle %}{{ _('Upload and view laboratory reports') }}{% endblock %}
+
+{% block header_actions %}
+<button onclick="document.getElementById('upload-modal').classList.remove('hidden')" class="btn-primary">
+  <i data-lucide="upload" class="w-4 h-4"></i> {{ _('Upload Result') }}
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="grid xl:grid-cols-3 gap-6">
+  <div class="xl:col-span-2 card overflow-hidden">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-slate-700/50">
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Result Title') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Patient ID') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Category') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('File Type') }}</th>
+          <th class="text-right text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Actions') }}</th>
+        </tr>
+      </thead>
+      <tbody id="lab-tbody">
+        <tr><td colspan="5" class="text-center py-12 text-slate-500">{{ _('Loading…') }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <h3 class="font-semibold text-white mb-4">{{ _('Allowed File Types') }}</h3>
+    <ul class="space-y-2 text-sm text-slate-400">
+      <li class="flex items-center gap-2"><span class="text-green-400">✓</span> {{ _('PDF documents') }}</li>
+      <li class="flex items-center gap-2"><span class="text-green-400">✓</span> {{ _('JPEG images') }}</li>
+      <li class="flex items-center gap-2"><span class="text-green-400">✓</span> {{ _('PNG images') }}</li>
+      <li class="flex items-center gap-2"><span class="text-green-400">✓</span> {{ _('TIFF scans') }}</li>
+      <li class="flex items-center gap-2"><span class="text-red-400">✗</span> {{ _('Max {size}MB per file').format(size=10) }}</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl p-6 w-full max-w-md animate-slide-up">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-white">{{ _('Upload Lab Result') }}</h2>
+      <button onclick="document.getElementById('upload-modal').classList.add('hidden')" class="text-slate-500 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="upload-form" onsubmit="uploadResult(event)" class="space-y-4" enctype="multipart/form-data">
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Patient ID') }} *</label>
+        <input name="patient_id" type="number" class="input" placeholder="{{ _('Patient ID') }}" required />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Title') }} *</label>
+        <input name="title" class="input" placeholder="{{ _('e.g. Blood Test — CBC') }}" required />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Notes') }}</label>
+        <textarea name="note" class="input h-20 resize-none" placeholder="{{ _('Optional notes…') }}"></textarea>
+      </div>
+      <div id="category-box" style="display:none">
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Category') }}</label>
+        <select name="category" id="category-select" class="input">
+          <option value="">— {{ _('Select') }} —</option>
+          <option value="xray">{{ _('X-Ray') }}</option>
+          <option value="mri">{{ _('MRI') }}</option>
+          <option value="ct_scan">{{ _('CT Scan') }}</option>
+          <option value="ultrasound">{{ _('Ultrasound') }}</option>
+          <option value="other">{{ _('Other') }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('File') }} *</label>
+        <input name="file" id="file-input" type="file" class="input pt-1.5" accept=".pdf,.jpg,.jpeg,.png,.tiff" required onchange="handleFileChange(this)" />
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="document.getElementById('upload-modal').classList.add('hidden')" class="btn-secondary flex-1">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center">
+          <i data-lucide="upload" class="w-4 h-4"></i> {{ _('Upload') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window._T = {
+    "Error loading": "{{ _('Error loading') }}",
+    "No lab results yet": "{{ _('No lab results yet') }}",
+    "Lab result uploaded!": "{{ _('Lab result uploaded!') }}",
+    "Upload failed": "{{ _('Upload failed') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  async function loadLabResults() {
+    const token = Auth.getToken();
+    const res = await fetch('/api/lab-results/?', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+    const tbody = document.getElementById('lab-tbody');
+    if (!res?.success) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-slate-500">${_t('Error loading')}</td></tr>`; return; }
+    if (!res.data.length) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-slate-500">${_t('No lab results yet')}</td></tr>`; return; }
+    const catLabel = { xray: 'X-Ray', mri: 'MRI', ct_scan: 'CT Scan', ultrasound: 'Ultrasound', blood_test: 'Blood Test', other: 'Other' };
+    tbody.innerHTML = res.data.map(r => `
+      <tr class="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+        <td class="px-6 py-4 text-sm font-medium text-white">${r.title}</td>
+        <td class="px-4 py-4 text-sm text-slate-400">#${r.patient_id}</td>
+        <td class="px-4 py-4"><span class="badge bg-slate-700 text-slate-300 text-xs">${r.category ? (catLabel[r.category] || r.category) : '—'}</span></td>
+        <td class="px-4 py-4"><span class="badge bg-slate-700 text-slate-300 text-xs">${r.file_type?.split('/')[1]?.toUpperCase() || '—'}</span></td>
+        <td class="px-6 py-4 text-right">
+          ${r.url ? `<a href="${r.url}" target="_blank" class="btn-secondary text-xs py-1">{{ _('View') }} →</a>` : '<span class="text-slate-600 text-xs">{{ _('No file') }}</span>'}
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function handleFileChange(input) {
+    const file = input.files[0];
+    const box = document.getElementById('category-box');
+    const select = document.getElementById('category-select');
+    if (file && file.type.startsWith('image/')) {
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+      if (select) select.value = '';
+    }
+  }
+
+  async function uploadResult(e) {
+    e.preventDefault();
+    const token = Auth.getToken();
+    const formData = new FormData(e.target);
+    const res = await fetch('/api/lab-results/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(r => r.json()).catch(() => null);
+    if (res?.success) {
+      document.getElementById('upload-modal').classList.add('hidden');
+      e.target.reset();
+      showToast(_t('Lab result uploaded!'));
+      loadLabResults();
+    } else {
+      showToast(res?.detail || _t('Upload failed'), 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => { loadLabResults(); if (window.lucide) lucide.createIcons(); });
+</script>
+{% endblock %}

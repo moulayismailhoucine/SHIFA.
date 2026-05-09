@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="{{ _lang }}" class="dark" {% if _rtl %}dir="rtl"{% endif %}>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ _("MediSys") }}{% endblock %} — {{ _("Hospital Management System") }}</title>
+  <meta name="description" content="{% block description %}{{ _("MediSys is a comprehensive hospital management system for staff, patients, and administrators.") }}{% endblock %}" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          animation: {
+            'fade-in': 'fadeIn 0.3s ease-out',
+            'slide-up': 'slideUp 0.4s ease-out',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@2.0.2" defer></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    /* ── Theme tokens ─────────────────────────────────────────────── */
+    :root {
+      --bg:          #f1f5f9;
+      --bg-card:     #ffffff;
+      --bg-sidebar:  #ffffff;
+      --bg-input:    #f8fafc;
+      --border:      #e2e8f0;
+      --text:        #0f172a;
+      --text-muted:  #64748b;
+      --text-nav:    #475569;
+      --nav-hover-bg:#f1f5f9;
+      --nav-active-bg: rgba(37,99,235,0.08);
+      --nav-active-text: #2563eb;
+      --scrollbar-track: #e2e8f0;
+      --scrollbar-thumb: #cbd5e1;
+    }
+    .dark {
+      --bg:          #0f172a;
+      --bg-card:     #1e293b;
+      --bg-sidebar:  rgba(15,23,42,0.95);
+      --bg-input:    rgba(15,23,42,0.6);
+      --border:      rgba(51,65,85,0.6);
+      --text:        #f1f5f9;
+      --text-muted:  #94a3b8;
+      --text-nav:    #94a3b8;
+      --nav-hover-bg: rgba(51,65,85,0.5);
+      --nav-active-bg: rgba(37,99,235,0.15);
+      --nav-active-text: #60a5fa;
+      --scrollbar-track: #0f172a;
+      --scrollbar-thumb: #334155;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      transition: background-color 0.25s, color 0.25s;
+    }
+
+    /* ── Glass ────────────────────────────────────────────────────── */
+    .glass {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+    }
+    .dark .glass {
+      background: rgba(30,41,59,0.75);
+    }
+
+    /* ── Gradient text ────────────────────────────────────────────── */
+    .gradient-text {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Nav link ─────────────────────────────────────────────────── */
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-nav);
+      transition: all 0.2s;
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+    .nav-link:hover {
+      color: var(--text);
+      background: var(--nav-hover-bg);
+    }
+    .nav-link.active {
+      background: var(--nav-active-bg);
+      color: var(--nav-active-text);
+      border-color: rgba(59,130,246,0.3);
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────────── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-secondary:hover { border-color: #3b82f6; color: #3b82f6; }
+
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(220,38,38,0.1);
+      color: #ef4444;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 0.75rem;
+      transition: all 0.2s;
+      border: 1px solid rgba(239,68,68,0.3);
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: rgba(220,38,38,0.2); }
+
+    /* ── Card ─────────────────────────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+    }
+
+    /* ── Input ────────────────────────────────────────────────────── */
+    .input {
+      width: 100%;
+      padding: 0.625rem 1rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      color: var(--text);
+      font-size: 0.875rem;
+      transition: all 0.2s;
+      outline: none;
+    }
+    .input::placeholder { color: var(--text-muted); }
+    .input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+    /* ── Badge ────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem 0.625rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* ── Sidebar & top bar ────────────────────────────────────────── */
+    #sidebar {
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+    }
+    .dark #sidebar { background: rgba(15,23,42,0.97); }
+
+    #topbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Table rows */
+    .table-row-hover:hover { background: var(--nav-hover-bg); }
+
+    /* ── Scrollbar ────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+    /* ── HTMX ─────────────────────────────────────────────────────── */
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline-flex; }
+    .htmx-request.htmx-indicator { display: inline-flex; }
+
+    /* ── Global Tailwind dark-class overrides (makes ALL templates theme-aware) ── */
+  .text-white, h1, h2, h3, h4, h5 { color: var(--text); }
+  .text-slate-100,.text-slate-200,.text-slate-300 { color: var(--text); }
+  .text-slate-400,.text-slate-500 { color: var(--text-muted); }
+  /* Keep explicit colored text */
+  .text-blue-400,.text-blue-500 { color: #3b82f6 !important; }
+  .text-green-400,.text-green-500 { color: #22c55e !important; }
+  .text-red-400,.text-red-500 { color: #ef4444 !important; }
+  .text-yellow-400,.text-yellow-500 { color: #eab308 !important; }
+  .text-purple-400,.text-purple-500 { color: #a855f7 !important; }
+  .text-orange-400,.text-orange-500 { color: #f97316 !important; }
+  .text-cyan-400,.text-cyan-500 { color: #06b6d4 !important; }
+  /* Card / background overrides */
+  .bg-slate-800, .bg-slate-800\/60, .bg-slate-800\/40, .bg-slate-800\/30 { background: var(--bg-card) !important; }
+  .bg-slate-900, .bg-slate-900\/40, .bg-slate-900\/60 { background: var(--bg) !important; }
+  .bg-slate-700 { background: var(--nav-hover-bg) !important; }
+  /* Border overrides */
+  .border-slate-700, .border-slate-700\/50, .border-slate-700\/30 { border-color: var(--border) !important; }
+  /* Input text color */
+  input, select, textarea { color: var(--text) !important; }
+  input::placeholder, textarea::placeholder { color: var(--text-muted) !important; }
+  select option { background: var(--bg-card); color: var(--text); }
+  /* Table */
+  table th { color: var(--text-muted) !important; border-color: var(--border) !important; }
+  table td { color: var(--text) !important; border-color: var(--border) !important; }
+  table tr:hover { background: var(--nav-hover-bg) !important; }
+  /* Modal backdrop always dark */
+  .bg-black\/60 { background: rgba(0,0,0,0.55) !important; }
+    #theme-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #theme-toggle:hover { color: var(--text); border-color: #3b82f6; }
+
+    /* Section headings in sidebar */
+    .nav-section {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0.5rem 0.75rem 0.375rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Logo area */
+    #sidebar-logo-text h1 { color: var(--text); }
+    #sidebar-logo-text p { color: var(--text-muted); }
+
+    /* User widget */
+    #user-widget { background: var(--nav-hover-bg); border-radius: 0.75rem; }
+    #sidebar-user-name { color: var(--text); }
+    #sidebar-user-role { color: var(--text-muted); }
+
+    /* Page title */
+    #page-title { color: var(--text); }
+    #page-subtitle { color: var(--text-muted); }
+
+    /* Table head text */
+    th { color: var(--text-muted) !important; }
+    td { color: var(--text); }
+
+    /* Light mode specific table borders */
+    .card table tr { border-color: var(--border); }
+
+    /* Alert bell */
+    #alert-bell { color: var(--text-muted); }
+    #alert-bell:hover { color: var(--text); }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen" style="background:var(--bg);color:var(--text)">
+
+<!-- Apply saved theme immediately to avoid flash -->
+<script>
+  (function(){
+    const t = localStorage.getItem('medisys_theme') || 'dark';
+    if (t === 'light') document.documentElement.classList.remove('dark');
+    else document.documentElement.classList.add('dark');
+  })();
+</script>
+
+{% block body %}
+{% if show_nav is not defined or show_nav %}
+<div class="flex h-screen overflow-hidden">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-64 flex-shrink-0 flex flex-col transition-colors duration-300">
+    <!-- Logo -->
+    <div class="p-6" style="border-bottom: 1px solid var(--border)">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30 flex-shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" />
+          </svg>
+        </div>
+        <div id="sidebar-logo-text">
+          <h1 class="font-bold text-lg leading-none">MediSys</h1>
+          <p class="text-xs mt-0.5">{{ _("Hospital Management") }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 p-4 space-y-0.5 overflow-y-auto">
+      <p class="nav-section">{{ _("Main") }}</p>
+      <a href="/dashboard" class="nav-link {% if request.url.path == '/dashboard' %}active{% endif %}">
+        <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i> {{ _("Dashboard") }}
+      </a>
+      <a href="/patients" class="nav-link {% if request.url.path == '/patients' %}active{% endif %}">
+        <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i> {{ _("Patients") }}
+      </a>
+      <a href="/appointments" id="nav-link-appointments" class="nav-link {% if request.url.path == '/appointments' %}active{% endif %}">
+        <i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i> {{ _("Appointments") }}
+      </a>
+
+      <p class="nav-section">{{ _("Clinical") }}</p>
+      <a href="/lab-results" class="nav-link {% if request.url.path == '/lab-results' %}active{% endif %}">
+        <i data-lucide="microscope" class="w-4 h-4 flex-shrink-0"></i> {{ _("Lab Results") }}
+      </a>
+
+      <p class="nav-section">{{ _("Public") }}</p>
+      <a href="/booking" id="nav-link-booking" class="nav-link {% if request.url.path == '/booking' %}active{% endif %}">
+        <i data-lucide="calendar-plus" class="w-4 h-4 flex-shrink-0"></i> {{ _("Book Appointment") }}
+      </a>
+      <a href="/chat" class="nav-link {% if request.url.path == '/chat' %}active{% endif %}">
+        <i data-lucide="message-circle" class="w-4 h-4 flex-shrink-0"></i> {{ _("AI Medical Chat") }}
+      </a>
+
+      <div id="nav-admin-section">
+        <p class="nav-section">{{ _("Admin") }}</p>
+        <a href="/admin" class="nav-link {% if request.url.path == '/admin' %}active{% endif %}">
+          <i data-lucide="shield" class="w-4 h-4 flex-shrink-0"></i> {{ _("Admin Panel") }}
+        </a>
+        <a href="/admin/doctors" class="nav-link {% if request.url.path == '/admin/doctors' %}active{% endif %}">
+          <i data-lucide="stethoscope" class="w-4 h-4 flex-shrink-0"></i> {{ _("Doctors") }}
+        </a>
+        <a href="/admin/nurses" class="nav-link {% if request.url.path == '/admin/nurses' %}active{% endif %}">
+          <i data-lucide="heart-pulse" class="w-4 h-4 flex-shrink-0"></i> {{ _("Nurses") }}
+        </a>
+        <a href="/admin/laboratories" class="nav-link {% if request.url.path == '/admin/laboratories' %}active{% endif %}">
+          <i data-lucide="flask-conical" class="w-4 h-4 flex-shrink-0"></i> {{ _("Laboratories") }}
+        </a>
+      </div>
+      <div id="nav-nurse-section" class="hidden">
+        <p class="nav-section">{{ _("Nursing") }}</p>
+        <a href="/nurse/vitals" class="nav-link {% if request.url.path == '/nurse/vitals' %}active{% endif %}">
+          <i data-lucide="heart-pulse" class="w-4 h-4 flex-shrink-0"></i> {{ _("Record Vitals") }}
+        </a>
+        <a href="/nurse/notes" class="nav-link {% if request.url.path == '/nurse/notes' %}active{% endif %}">
+          <i data-lucide="notebook-pen" class="w-4 h-4 flex-shrink-0"></i> {{ _("Nurse Notes") }}
+        </a>
+      </div>
+      <div id="nav-nursing-orders" class="hidden">
+        <p class="nav-section">{{ _("Tasks") }}</p>
+        <a href="/nurse/orders" class="nav-link {% if request.url.path == '/nurse/orders' %}active{% endif %}">
+          <i data-lucide="heart-pulse" class="w-4 h-4 flex-shrink-0"></i> {{ _("Nursing Orders") }}
+        </a>
+      </div>
+    </nav>
+
+    <!-- User widget -->
+    <div class="p-4" style="border-top: 1px solid var(--border)">
+      <div class="flex items-center gap-3 p-3" id="user-widget">
+        <div class="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+          <i data-lucide="user" class="w-4 h-4 text-blue-500"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold truncate" id="sidebar-user-name">—</p>
+          <p class="text-xs truncate" id="sidebar-user-role">{{ _("Not logged in") }}</p>
+        </div>
+        <button onclick="logout()" class="text-red-400 hover:text-red-500 transition-colors flex-shrink-0" title="{{ _("Logout") }}">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden" style="background:var(--bg)">
+    <!-- Top bar -->
+    <header id="topbar" class="h-16 flex items-center justify-between px-6 flex-shrink-0 transition-colors duration-300">
+      <div>
+        <h2 class="font-semibold text-base" id="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+        <p class="text-xs" id="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Language selector -->
+        <div class="relative">
+          <button id="lang-toggle" onclick="toggleLangMenu()" title="{{ _("Language") }}" class="flex items-center justify-center w-9 h-9 rounded-xl border" style="border-color:var(--border);background:var(--bg-card);color:var(--text-muted)">
+            <span class="text-xs font-bold uppercase">{{ _lang }}</span>
+          </button>
+          <div id="lang-menu" class="hidden absolute {% if _rtl %}left-0{% else %}right-0{% endif %} top-full mt-2 w-32 rounded-xl border shadow-lg z-50 overflow-hidden" style="border-color:var(--border);background:var(--bg-card)">
+            <a href="/set-lang/en" class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-600/10 {% if _lang == 'en' %}text-blue-500 font-semibold{% else %}text-slate-400{% endif %}">
+              <span class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border" style="border-color:var(--border)">EN</span> {{ _("English") }}
+            </a>
+            <a href="/set-lang/fr" class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-600/10 {% if _lang == 'fr' %}text-blue-500 font-semibold{% else %}text-slate-400{% endif %}">
+              <span class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border" style="border-color:var(--border)">FR</span> {{ _("French") }}
+            </a>
+            <a href="/set-lang/ar" class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-600/10 {% if _lang == 'ar' %}text-blue-500 font-semibold{% else %}text-slate-400{% endif %}">
+              <span class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold border" style="border-color:var(--border)">AR</span> {{ _("Arabic") }}
+            </a>
+          </div>
+        </div>
+        <!-- Theme toggle -->
+        <button id="theme-toggle" onclick="toggleTheme()" title="{{ _("Theme") }}">
+          <i data-lucide="sun" class="w-4 h-4 hidden" id="icon-sun"></i>
+          <i data-lucide="moon" class="w-4 h-4" id="icon-moon"></i>
+        </button>
+        <button class="relative transition-colors" id="alert-bell">
+          <i data-lucide="bell" class="w-5 h-5"></i>
+          <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        {% block header_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <div class="flex-1 overflow-y-auto p-6">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+{% else %}
+<!-- No-nav layout: override block body in child templates instead -->
+{% endif %}
+{% endblock %}
+
+<!-- Toast notifications -->
+<div id="toast-container" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
+
+<script>
+  // ── Theme ─────────────────────────────────────────────────────────
+  function applyTheme(theme) {
+    const html = document.documentElement;
+    const sunIcon = document.getElementById('icon-sun');
+    const moonIcon = document.getElementById('icon-moon');
+    if (theme === 'light') {
+      html.classList.remove('dark');
+      if (sunIcon)  sunIcon.classList.add('hidden');
+      if (moonIcon) moonIcon.classList.remove('hidden');
+    } else {
+      html.classList.add('dark');
+      if (sunIcon)  sunIcon.classList.remove('hidden');
+      if (moonIcon) moonIcon.classList.add('hidden');
+    }
+    localStorage.setItem('medisys_theme', theme);
+  }
+
+  function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
+  }
+
+  // Apply saved theme on load
+  (function(){
+    const saved = localStorage.getItem('medisys_theme') || 'dark';
+    applyTheme(saved);
+  })();
+
+  // ── Language menu ─────────────────────────────────────────────────
+  function toggleLangMenu() {
+    const menu = document.getElementById('lang-menu');
+    if (menu.classList.contains('hidden')) {
+      menu.classList.remove('hidden');
+      document.addEventListener('click', closeLangMenuOutside);
+    } else {
+      menu.classList.add('hidden');
+      document.removeEventListener('click', closeLangMenuOutside);
+    }
+  }
+  function closeLangMenuOutside(e) {
+    const menu = document.getElementById('lang-menu');
+    const btn = document.getElementById('lang-toggle');
+    if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+      menu.classList.add('hidden');
+      document.removeEventListener('click', closeLangMenuOutside);
+    }
+  }
+
+  // ── Icons ─────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+  document.addEventListener('htmx:afterSettle', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // ── Auth helpers ──────────────────────────────────────────────────
+  const Auth = {
+    getToken: () => localStorage.getItem('medisys_token'),
+    getUser: () => { try { return JSON.parse(localStorage.getItem('medisys_user') || '{}'); } catch { return {}; } },
+    isLoggedIn: () => !!Auth.getToken(),
+    save: (token, user) => { localStorage.setItem('medisys_token', token); localStorage.setItem('medisys_user', JSON.stringify(user)); },
+    clear: () => { localStorage.removeItem('medisys_token'); localStorage.removeItem('medisys_user'); },
+  };
+
+  // Sidebar user widget
+  function updateUserWidget() {
+    const user = Auth.getUser();
+    const nameEl = document.getElementById('sidebar-user-name');
+    const roleEl = document.getElementById('sidebar-user-role');
+    if (nameEl && user.name) nameEl.textContent = user.name;
+    if (roleEl && user.role) roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+
+    // Hide admin nav section if not admin
+    const adminNav = document.getElementById('nav-admin-section');
+    if (adminNav) {
+      if (user.role !== 'admin') {
+        adminNav.style.display = 'none';
+      } else {
+        adminNav.style.display = 'block';
+      }
+    }
+    
+    // Show nurse nav section if nurse
+    const nurseNav = document.getElementById('nav-nurse-section');
+    if (nurseNav) {
+      if (user.role === 'nurse') {
+        nurseNav.classList.remove('hidden');
+      } else {
+        nurseNav.classList.add('hidden');
+      }
+    }
+
+    // Show nursing orders nav for nurses and doctors
+    const ordersNav = document.getElementById('nav-nursing-orders');
+    if (ordersNav) {
+      if (user.role === 'nurse' || user.role === 'doctor') {
+        ordersNav.classList.remove('hidden');
+      } else {
+        ordersNav.classList.add('hidden');
+      }
+    }
+
+    // Hide appointments/booking nav for laboratory users
+    if (user.role === 'laboratory') {
+      const apptLink = document.getElementById('nav-link-appointments');
+      const bookLink = document.getElementById('nav-link-booking');
+      if (apptLink) apptLink.style.display = 'none';
+      if (bookLink) bookLink.style.display = 'none';
+    }
+  }
+  updateUserWidget();
+
+  // Logout
+  async function logout() {
+    const token = Auth.getToken();
+    if (token) {
+      await fetch('/api/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
+    Auth.clear();
+    window.location.href = '/login';
+  }
+
+  // Toast
+  function showToast(message, type = 'success') {
+    const colors = { success: '#16a34a', error: '#dc2626', info: '#2563eb', warning: '#d97706' };
+    const toast = document.createElement('div');
+    toast.style.cssText = `background:${colors[type]||colors.success};color:#fff;padding:0.75rem 1rem;border-radius:0.75rem;box-shadow:0 10px 25px rgba(0,0,0,0.2);font-size:0.875rem;font-weight:500;display:flex;align-items:center;gap:0.5rem;min-width:16rem;animation:slideUp 0.3s ease-out`;
+    toast.textContent = message;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }
+
+  // HTMX auth headers
+  document.addEventListener('htmx:configRequest', (e) => {
+    const token = Auth.getToken();
+    if (token) e.detail.headers['Authorization'] = `Bearer ${token}`;
+  });
+  document.addEventListener('htmx:responseError', (e) => {
+    showToast(`{{ _('Request failed') }}: ${e.detail.xhr.status}`, 'error');
+  });
+
+  // ── JS Translation helper ─────────────────────────────────────────
+  // Templates can define window._T = { key: "translated", ... }
+  window._t = function(k) { return (window._T && window._T[k]) || k; };
+
+  // Redirect to login if not authenticated
+  const publicPaths = ['/login', '/booking', '/chat', '/contact'];
+  if (!publicPaths.some(p => window.location.pathname.startsWith(p)) && !Auth.isLoggedIn()) {
+    window.location.href = '/login';
+  }
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

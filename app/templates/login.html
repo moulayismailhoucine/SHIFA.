@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% set show_nav = false %}
+
+{% block title %}{{ _("Login") }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center bg-slate-900 relative overflow-hidden">
+  <!-- Background decorations -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Grid pattern -->
+  <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#60a5fa 1px, transparent 1px), linear-gradient(90deg, #60a5fa 1px, transparent 1px); background-size: 48px 48px;"></div>
+
+  <div class="relative z-10 w-full max-w-md px-6">
+    <!-- Logo -->
+    <div class="text-center mb-8 animate-fade-in">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-2xl shadow-blue-600/40 mb-4">
+        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold gradient-text">MediSys</h1>
+      <p class="text-slate-400 mt-1 text-sm">{{ _("Hospital Management System") }}</p>
+    </div>
+
+    <!-- Login card -->
+    <div class="glass rounded-2xl p-8 animate-slide-up">
+      <!-- Tab switcher -->
+      <div class="flex bg-slate-900/60 rounded-xl p-1 mb-6">
+        <button id="tab-staff" onclick="switchTab('staff')"
+          class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-blue-400 bg-slate-800">
+          {{ _("Staff Login") }}
+        </button>
+        <button id="tab-nfc" onclick="switchTab('nfc')"
+          class="flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200">
+          NFC / {{ _("Patient") }}
+        </button>
+      </div>
+
+       <!-- Staff login form -->
+      <form id="staff-form" onsubmit="handleStaffLogin(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _("Username or Email") }}</label>
+            <div class="relative">
+              <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <i data-lucide="user" class="w-4 h-4"></i>
+              </div>
+              <input id="staff-username" type="text" class="input pl-10" placeholder="{{ _('admin@medisys.com') }}" required />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _("Password") }}</label>
+            <div class="relative">
+              <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+              </div>
+              <input id="staff-password" type="password" class="input pl-10" placeholder="••••••••" required />
+              <button type="button" onclick="togglePassword('staff-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="login-error" class="hidden mt-4 p-3 bg-red-600/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+          <span id="login-error-text"></span>
+        </div>
+
+        <button type="submit" id="login-btn" class="mt-6 w-full btn-primary justify-center py-3 text-base">
+          <span id="login-btn-text">{{ _("Sign In") }}</span>
+          <span id="login-spinner" class="hidden">
+            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </span>
+        </button>
+      </form>
+
+      <!-- NFC form -->
+      <form id="nfc-form" class="hidden" onsubmit="handleNfcLogin(event)">
+        <div class="text-center mb-6">
+          <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-600/10 border-2 border-blue-500/30 rounded-2xl mb-3 animate-pulse-slow">
+            <i data-lucide="credit-card" class="w-10 h-10 text-blue-400"></i>
+          </div>
+          <p class="text-slate-300 text-sm">{{ _("Tap your NFC card or enter the card UID manually") }}</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _("NFC Card UID") }}</label>
+          <input id="nfc-uid" type="text" class="input text-center tracking-widest text-lg font-mono" placeholder="{{ _('E.g. A1B2C3D4') }}" required />
+        </div>
+        <button type="submit" class="mt-6 w-full btn-primary justify-center py-3 text-base">
+          <i data-lucide="credit-card" class="w-4 h-4"></i>
+          {{ _("Authenticate with NFC") }}
+        </button>
+      </form>
+
+      <!-- Quick access links -->
+      <div class="mt-6 pt-6 border-t border-slate-700/50">
+        <p class="text-xs text-slate-500 text-center mb-3">{{ _("Public access") }}</p>
+        <div class="flex gap-2">
+          <a href="/booking" class="flex-1 text-center text-xs text-slate-400 hover:text-blue-400 transition-colors py-2 rounded-lg hover:bg-slate-800/40">
+            📅 {{ _("Book Appointment") }}
+          </a>
+          <a href="/chat" class="flex-1 text-center text-xs text-slate-400 hover:text-blue-400 transition-colors py-2 rounded-lg hover:bg-slate-800/40">
+            💬 {{ _("AI Medical Chat") }}
+          </a>
+          <a href="/contact" class="flex-1 text-center text-xs text-slate-400 hover:text-blue-400 transition-colors py-2 rounded-lg hover:bg-slate-800/40">
+            📩 {{ _("Contact") }}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo credentials hint -->
+    <div class="mt-4 glass rounded-xl p-4 text-center animate-fade-in">
+      <p class="text-xs text-slate-500">
+        {{ _("Demo credentials") }}: <code class="text-blue-400">admin / Admin@1234</code>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window._T = {
+    "Signing in...": "{{ _('Signing in') }}...",
+    "Sign In": "{{ _('Sign In') }}",
+    "Invalid credentials": "{{ _('Invalid credentials') }}",
+    "Network error. Please try again.": "{{ _('Network error. Please try again.') }}",
+    "NFC card not recognized": "{{ _('NFC card not recognized') }}",
+    "Network error.": "{{ _('Network error. Please try again.') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  function switchTab(tab) {
+    const staffForm = document.getElementById('staff-form');
+    const nfcForm = document.getElementById('nfc-form');
+    const tabStaff = document.getElementById('tab-staff');
+    const tabNfc = document.getElementById('tab-nfc');
+
+    if (tab === 'staff') {
+      staffForm.classList.remove('hidden');
+      nfcForm.classList.add('hidden');
+      tabStaff.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-blue-400 bg-slate-800';
+      tabNfc.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200';
+    } else {
+      nfcForm.classList.remove('hidden');
+      staffForm.classList.add('hidden');
+      tabNfc.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-blue-400 bg-slate-800';
+      tabStaff.className = 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-slate-400 hover:text-slate-200';
+    }
+  }
+
+  function togglePassword(id) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  function showLoginError(msg) {
+    document.getElementById('login-error-text').textContent = msg;
+    document.getElementById('login-error').classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function setLoading(loading) {
+    document.getElementById('login-btn-text').textContent = loading ? _t('Signing in...') : _t('Sign In');
+    document.getElementById('login-spinner').classList.toggle('hidden', !loading);
+    document.getElementById('login-btn').disabled = loading;
+  }
+
+  async function handleStaffLogin(e) {
+    e.preventDefault();
+    document.getElementById('login-error').classList.add('hidden');
+    setLoading(true);
+
+    const username = document.getElementById('staff-username').value;
+    const password = document.getElementById('staff-password').value;
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        Auth.save(data.token, data.user);
+        window.location.href = '/dashboard';
+      } else {
+        showLoginError(data.detail || _t('Invalid credentials'));
+      }
+    } catch {
+      showLoginError(_t('Network error. Please try again.'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleNfcLogin(e) {
+    e.preventDefault();
+    const nfc_uid = document.getElementById('nfc-uid').value.trim();
+    try {
+      const res = await fetch('/api/nfc-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nfc_uid }),
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        Auth.save(data.token, data.patient || {});
+        window.location.href = '/dashboard';
+      } else {
+        showLoginError(data.detail || _t('NFC card not recognized'));
+      }
+    } catch {
+      showLoginError(_t('Network error.'));
+    }
+  }
+
+  // If already logged in, redirect
+  if (Auth.isLoggedIn()) {
+    window.location.href = '/dashboard';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+{% endblock %}

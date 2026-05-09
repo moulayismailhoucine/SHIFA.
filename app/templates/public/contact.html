@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Contact Us') }}{% endblock %}
+{% set show_nav = false %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-0 right-0 w-96 h-96 bg-blue-600/8 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl"></div>
+  </div>
+  <div class="relative z-10 w-full max-w-lg">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl shadow-xl shadow-blue-600/30 mb-4">
+        <i data-lucide="mail" class="w-7 h-7 text-white"></i>
+      </div>
+      <h1 class="text-2xl font-bold text-white">{{ _('Contact MediSys') }}</h1>
+      <p class="text-slate-400 mt-1 text-sm">{{ _('We respond within 24 hours') }}</p>
+    </div>
+
+    <div class="glass rounded-2xl p-8">
+      <form id="contact-form" onsubmit="submitContact(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Name *') }}</label>
+            <input id="contact-name" type="text" class="input" placeholder="{{ _('Your name') }}" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Email *') }}</label>
+            <input id="contact-email" type="email" class="input" placeholder="{{ _('you@example.com') }}" required />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Subject') }}</label>
+          <input id="contact-subject" type="text" class="input" placeholder="{{ _('How can we help?') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Message *') }}</label>
+          <textarea id="contact-message" class="input h-32 resize-none" placeholder="{{ _('Describe your inquiry…') }}" required minlength="10"></textarea>
+        </div>
+        <!-- Honeypot -->
+        <div style="display:none" aria-hidden="true">
+          <input id="hp-website" type="text" name="website" tabindex="-1" />
+        </div>
+
+        <div id="contact-success" class="hidden p-3 bg-green-600/20 border border-green-500/30 rounded-xl text-green-400 text-sm">
+          ✅ {{ _('Message sent! We\'ll get back to you shortly.') }}
+        </div>
+        <div id="contact-error" class="hidden p-3 bg-red-600/20 border border-red-500/30 rounded-xl text-red-400 text-sm"></div>
+
+        <button type="submit" id="contact-btn" class="w-full btn-primary justify-center py-3">
+          <i data-lucide="send" class="w-4 h-4"></i> {{ _('Send Message') }}
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-slate-700/50 flex justify-center gap-6">
+        <a href="/booking" class="text-xs text-slate-400 hover:text-blue-400 transition-colors">📅 {{ _('Book Appointment') }}</a>
+        <a href="/chat" class="text-xs text-slate-400 hover:text-blue-400 transition-colors">💬 {{ _('AI Medical Chat') }}</a>
+        <a href="/login" class="text-xs text-slate-400 hover:text-blue-400 transition-colors">🔐 {{ _('Staff Login') }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window._T = {
+    "Failed to send. Please try again.": "{{ _('Failed to send. Please try again.') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  async function submitContact(e) {
+    e.preventDefault();
+    const btn = document.getElementById('contact-btn');
+    btn.disabled = true;
+    document.getElementById('contact-error').classList.add('hidden');
+
+    const body = {
+      name: document.getElementById('contact-name').value,
+      email: document.getElementById('contact-email').value,
+      subject: document.getElementById('contact-subject').value || null,
+      message: document.getElementById('contact-message').value,
+      website: document.getElementById('hp-website').value || null,
+    };
+
+    const res = await fetch('/api/public/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json()).catch(() => null);
+
+    if (res?.success) {
+      document.getElementById('contact-success').classList.remove('hidden');
+      document.getElementById('contact-form').reset();
+    } else {
+      const err = document.getElementById('contact-error');
+      err.textContent = res?.detail || _t('Failed to send. Please try again.');
+      err.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });
+</script>
+{% endblock %}

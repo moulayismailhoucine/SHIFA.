@@ -1,0 +1,32 @@
+# Virtual environments
+.venv312/
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database (optional - remove if you want to track DB)
+# *.db
+# *.sqlite3
+
+# Logs
+*.log
+
+# Model data (large files)
+app/ai/data/
+app/ai/models/*.keras
+app/ai/models/*.h5

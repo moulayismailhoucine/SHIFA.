@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Appointments') }}{% endblock %}
+{% block page_title %}{{ _('Appointments') }}{% endblock %}
+{% block page_subtitle %}{{ _('Schedule & manage appointments') }}{% endblock %}
+
+{% block header_actions %}
+<a href="/booking" class="btn-secondary">
+  <i data-lucide="globe" class="w-4 h-4"></i> {{ _('Public Booking') }}
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="flex gap-3 mb-4 flex-wrap">
+  {% for status_label, status_val in [(_('All'), ''), (_('Pending'), 'pending'), (_('Confirmed'), 'confirmed'), (_('Completed'), 'completed'), (_('Cancelled'), 'cancelled')] %}
+  <button onclick="filterStatus('{{ status_val }}')"
+    data-status="{{ status_val }}"
+    class="status-filter px-4 py-2 text-sm font-medium rounded-xl border border-slate-700 text-slate-400 hover:border-blue-500/50 hover:text-blue-400 transition-all
+      {% if status_val == '' %}active-filter border-blue-500/50 text-blue-400 bg-blue-600/10{% endif %}">
+    {{ status_label }}
+  </button>
+  {% endfor %}
+</div>
+
+<div class="card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-slate-700/50">
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Patient') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Date & Time') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4 hidden md:table-cell">{{ _('Reason') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Status') }}</th>
+          <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4 hidden lg:table-cell">{{ _('Risk') }}</th>
+          <th class="text-right text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Actions') }}</th>
+        </tr>
+      </thead>
+      <tbody id="appt-tbody">
+        <tr><td colspan="6" class="text-center py-12 text-slate-500">{{ _('Loading appointments…') }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window._T = {
+    "Failed to load appointments": "{{ _('Failed to load appointments') }}",
+    "No appointments found": "{{ _('No appointments found') }}",
+    "Patient #": "{{ _('Patient #') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  let currentFilter = '';
+
+  function filterStatus(status) {
+    currentFilter = status;
+    document.querySelectorAll('.status-filter').forEach(b => {
+      const match = b.dataset.status === status;
+      b.classList.toggle('active-filter', match);
+      b.classList.toggle('border-blue-500/50', match);
+      b.classList.toggle('text-blue-400', match);
+      b.classList.toggle('bg-blue-600/10', match);
+    });
+    loadAppointments();
+  }
+
+  async function loadAppointments() {
+    const token = Auth.getToken();
+    let url = '/api/appointments/?limit=50';
+    if (currentFilter) url += `&status=${currentFilter}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).catch(() => null);
+
+    const tbody = document.getElementById('appt-tbody');
+    if (!res?.success) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">${_t('Failed to load appointments')}</td></tr>`;
+      return;
+    }
+    if (!res.data.items.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">${_t('No appointments found')}</td></tr>`;
+      return;
+    }
+
+    const statusColors = {
+      pending: 'bg-yellow-600/20 text-yellow-400',
+      confirmed: 'bg-green-600/20 text-green-400',
+      cancelled: 'bg-red-600/20 text-red-400',
+      completed: 'bg-blue-600/20 text-blue-400',
+      no_show: 'bg-slate-600/20 text-slate-400',
+    };
+    const riskColors = {
+      minimal: 'text-green-400', low: 'text-green-400',
+      medium: 'text-yellow-400', high: 'text-orange-400', critical: 'text-red-400',
+    };
+
+    tbody.innerHTML = res.data.items.map(a => `
+      <tr class="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+        <td class="px-6 py-4">
+          <div>
+            <p class="font-medium text-white text-sm">${a.guest_name || `${_t('Patient #')}${a.patient_id || '—'}`}</p>
+            <p class="text-xs text-slate-500">${a.guest_phone || ''}</p>
+          </div>
+        </td>
+        <td class="px-4 py-4 text-sm text-slate-300">
+          ${new Date(a.scheduled_at).toLocaleDateString()}<br>
+          <span class="text-xs text-slate-500">${new Date(a.scheduled_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
+        </td>
+        <td class="px-4 py-4 text-sm text-slate-400 hidden md:table-cell max-w-xs truncate">${a.reason || '—'}</td>
+        <td class="px-4 py-4">
+          <span class="badge ${statusColors[a.status] || 'bg-slate-700 text-slate-300'}">${a.status}</span>
+        </td>
+        <td class="px-4 py-4 hidden lg:table-cell">
+          ${a.fraud_risk_level ? `<span class="text-xs font-semibold ${riskColors[a.fraud_risk_level] || 'text-slate-400'}">${a.fraud_risk_level} (${a.fraud_score})</span>` : '<span class="text-slate-600">—</span>'}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <button onclick="updateStatus(${a.id}, 'confirmed')" class="text-xs text-green-400 hover:text-green-300 mr-2 transition-colors">✓</button>
+          <button onclick="updateStatus(${a.id}, 'cancelled')" class="text-xs text-red-400 hover:text-red-300 transition-colors">✗</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function updateStatus(id, status) {
+    const token = Auth.getToken();
+    const res = await fetch(`/api/appointments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    }).then(r => r.json());
+    if (res.success) { showToast(`Appointment ${status}`); loadAppointments(); }
+    else showToast(res.detail || 'Error', 'error');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAppointments();
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+{% endblock %}

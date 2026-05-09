@@ -1,0 +1,10 @@
+name = "medisys-edge"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+BACKEND_ORIGIN = "https://api.medisys.example.com"
+
+# For staging:
+# [env.staging.vars]
+# BACKEND_ORIGIN = "https://staging-api.medisys.example.com"

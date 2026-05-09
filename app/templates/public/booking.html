@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Book an Appointment') }}{% endblock %}
+{% set show_nav = false %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-900 relative overflow-hidden">
+  <!-- Background decorations -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-32 right-0 w-96 h-96 bg-blue-600/8 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="relative z-10 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-lg">
+    <div class="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 21V10l8-5 8 5v11M2 21h20M8 21v-4h8v4" />
+          </svg>
+        </div>
+        <h1 class="font-bold text-white">{{ _('Book an Appointment') }}</h1>
+      </div>
+      <a href="/login" class="btn-secondary text-xs py-1.5">{{ _('Staff Login') }}</a>
+    </div>
+  </header>
+
+  <main class="relative z-10 max-w-2xl mx-auto px-6 py-8">
+    <!-- Progress steps -->
+    <div class="flex items-center gap-2 mb-8">
+      {% set steps = [("1", _("Select Doctor")), ("2", _("Choose Time")), ("3", _("Your Details")), ("4", _("Confirm"))] %}
+      {% for step in steps %}
+      <div class="flex items-center gap-2 flex-1">
+        <div id="step-circle-{{ loop.index }}" class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+          {% if loop.index == 1 %}bg-blue-600 text-white{% else %}bg-slate-800 border border-slate-700 text-slate-500{% endif %}
+          transition-all duration-300">
+          {{ step[0] }}
+        </div>
+        <span id="step-label-{{ loop.index }}" class="text-xs font-medium hidden sm:block
+          {% if loop.index == 1 %}text-blue-400{% else %}text-slate-500{% endif %}
+          transition-colors">
+          {{ step[1] }}
+        </span>
+        {% if not loop.last %}
+        <div id="step-line-{{ loop.index }}" class="flex-1 h-px bg-slate-700 transition-colors"></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Step 1: Select Doctor -->
+    <div id="step-1" class="animate-fade-in">
+      <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-1">{{ _('Select a Doctor') }}</h2>
+        <p class="text-slate-400 text-sm mb-5">{{ _('Choose the specialist you\'d like to see') }}</p>
+        <div id="doctors-list" class="space-y-3">
+          <div class="text-center py-8 text-slate-500">
+            <svg class="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            {{ _('Loading doctors…') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Choose Time -->
+    <div id="step-2" class="hidden animate-fade-in">
+      <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-1">{{ _('Choose Date & Time') }}</h2>
+        <p class="text-slate-400 text-sm mb-5">{{ _('Select an available appointment slot') }}</p>
+        <div class="mb-4">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Date') }}</label>
+          <input id="booking-date" type="date" class="input" onchange="loadSlots()" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Available Slots') }}</label>
+          <div id="slots-grid" class="grid grid-cols-3 gap-2">
+            <div class="text-slate-500 text-sm text-center col-span-3 py-4">{{ _('Select a date first') }}</div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button onclick="goStep(1)" class="btn-secondary flex-1">← {{ _('Back') }}</button>
+          <button onclick="goStep(3)" id="step2-next" class="btn-primary flex-1" disabled>{{ _('Next') }} →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Your Details -->
+    <div id="step-3" class="hidden animate-fade-in">
+      <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-1">{{ _('Your Details') }}</h2>
+        <p class="text-slate-400 text-sm mb-5">{{ _('Please provide your contact information') }}</p>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Full Name *') }}</label>
+            <input id="guest-name" type="text" class="input" placeholder="{{ _('Your full name') }}" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Phone *') }}</label>
+            <input id="guest-phone" type="tel" class="input" placeholder="{{ _('+1 234 567 8900') }}" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Email (optional)') }}</label>
+            <input id="guest-email" type="email" class="input" placeholder="{{ _('you@example.com') }}" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">{{ _('Reason for visit') }}</label>
+            <textarea id="booking-reason" class="input h-24 resize-none" placeholder="{{ _('Brief description of your concern…') }}"></textarea>
+          </div>
+          <!-- Honeypot fields (hidden from real users) -->
+          <div style="display:none" aria-hidden="true">
+            <input id="hp-website" type="text" name="website" tabindex="-1" />
+            <input id="hp-confirm-email" type="email" name="confirm_email" tabindex="-1" />
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button onclick="goStep(2)" class="btn-secondary flex-1">← {{ _('Back') }}</button>
+          <button onclick="goStep(4)" class="btn-primary flex-1">{{ _('Review') }} →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Confirm -->
+    <div id="step-4" class="hidden animate-fade-in">
+      <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-1">{{ _('Confirm Appointment') }}</h2>
+        <p class="text-slate-400 text-sm mb-5">{{ _('Review your appointment details before submitting') }}</p>
+        <div class="space-y-3 mb-6" id="confirm-details">
+          <!-- Filled by JS -->
+        </div>
+        <div id="booking-error" class="hidden mb-4 p-3 bg-red-600/20 border border-red-500/30 rounded-xl text-red-400 text-sm"></div>
+        <div id="booking-success" class="hidden mb-4 p-4 bg-green-600/20 border border-green-500/30 rounded-xl text-green-400">
+          <p class="font-semibold">✅ {{ _('Appointment booked successfully!') }}</p>
+          <p class="text-sm mt-1" id="success-ref"></p>
+        </div>
+        <div class="flex gap-3" id="confirm-actions">
+          <button onclick="goStep(3)" class="btn-secondary flex-1">← {{ _('Edit') }}</button>
+          <button onclick="submitBooking()" id="submit-btn" class="btn-primary flex-1 justify-center">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            {{ _('Confirm Booking') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let selectedDoctor = null;
+  let selectedSlot = null;
+  let currentStep = 1;
+
+  window._T = {
+    "No doctors available": "{{ _('No doctors available') }}",
+    "General": "{{ _('General') }}",
+    "Loading slots…": "{{ _('Loading…') }}",
+    "Select a date first": "{{ _('Select a date first') }}",
+    "No slots available for this date. Try another day.": "{{ _('No slots available for this date. Try another day.') }}",
+    "Back": "{{ _('Back') }}",
+    "Next": "{{ _('Next') }}",
+    "Doctor": "{{ _('Doctor') }}",
+    "Specialty": "{{ _('Specialty') }}",
+    "Date & Time": "{{ _('Date & Time') }}",
+    "Patient": "{{ _('Patient') }}",
+    "Phone": "{{ _('Phone') }}",
+    "Reason": "{{ _('Reason') }}",
+    "Booking…": "{{ _('Booking…') }}",
+    "Booking failed. Please try again.": "{{ _('Booking failed. Please try again.') }}",
+    "Network error. Please try again.": "{{ _('Network error. Please try again.') }}",
+    "Confirm Booking": "{{ _('Confirm Booking') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  // Set min date to today
+  const dateInput = document.getElementById('booking-date');
+  if (dateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    dateInput.value = today;
+  }
+
+  function goStep(n) {
+    document.getElementById(`step-${currentStep}`).classList.add('hidden');
+    document.getElementById(`step-${n}`).classList.remove('hidden');
+
+    // Update progress circles
+    for (let i = 1; i <= 4; i++) {
+      const circle = document.getElementById(`step-circle-${i}`);
+      const label = document.getElementById(`step-label-${i}`);
+      if (i < n) {
+        circle.className = circle.className.replace(/bg-slate-800 border border-slate-700 text-slate-500|bg-blue-600 text-white/, 'bg-green-600 text-white');
+        if (label) label.className = label.className.replace('text-slate-500', 'text-green-400');
+      } else if (i === n) {
+        circle.className = circle.className.replace(/bg-slate-800 border border-slate-700 text-slate-500|bg-green-600 text-white/, 'bg-blue-600 text-white');
+        if (label) label.className = label.className.replace('text-slate-500 text-green-400', 'text-blue-400');
+      } else {
+        circle.className = circle.className.replace(/bg-blue-600 text-white|bg-green-600 text-white/, 'bg-slate-800 border border-slate-700 text-slate-500');
+        if (label) label.className = label.className.replace('text-blue-400 text-green-400', 'text-slate-500');
+      }
+    }
+
+    if (n === 4) buildConfirmation();
+    currentStep = n;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  async function loadDoctors() {
+    const res = await fetch('/api/public/doctors').then(r => r.json()).catch(() => ({ success: false }));
+    const container = document.getElementById('doctors-list');
+    if (!res.success || !res.data.length) {
+      container.innerHTML = `<p class="text-slate-500 text-sm text-center py-6">${_t('No doctors available')}</p>`;
+      return;
+    }
+    container.innerHTML = res.data.map(d => `
+      <button onclick="selectDoctor(${JSON.stringify(d).replace(/"/g, '&quot;')})" data-id="${d.id}"
+        class="doctor-card w-full flex items-center gap-4 p-4 rounded-xl border border-slate-700/50 hover:border-blue-500/50 bg-slate-800/40 hover:bg-slate-800/60 transition-all text-left group">
+        <div class="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-lg flex-shrink-0">
+          ${d.name.charAt(0)}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-white">${d.name}</p>
+          <p class="text-sm text-blue-400">${d.specialty || _t('General')}</p>
+          <p class="text-xs text-slate-500 mt-0.5">${d.working_days || 'Mon–Fri'} · ${d.working_hours_start || '8:00'} – ${d.working_hours_end || '17:00'}</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+      </button>
+    `).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function selectDoctor(d) {
+    selectedDoctor = d;
+    document.querySelectorAll('.doctor-card').forEach(c => {
+      c.classList.remove('border-blue-500/70', 'bg-blue-600/10');
+    });
+    document.querySelector(`[data-id="${d.id}"]`).classList.add('border-blue-500/70', 'bg-blue-600/10');
+    setTimeout(() => goStep(2), 200);
+  }
+
+  async function loadSlots() {
+    const date = document.getElementById('booking-date').value;
+    if (!date || !selectedDoctor) return;
+
+    const grid = document.getElementById('slots-grid');
+    grid.innerHTML = `<div class="col-span-3 text-slate-500 text-sm text-center py-4">${_t('Loading slots…')}</div>`;
+
+    const res = await fetch(`/api/public/available-slots?doctor_id=${selectedDoctor.id}&date=${date}`)
+      .then(r => r.json()).catch(() => ({ success: false }));
+
+    if (!res.success || !res.data.slots.length) {
+      grid.innerHTML = `<div class="col-span-3 text-slate-500 text-sm text-center py-6">${_t('No slots available for this date. Try another day.')}</div>`;
+      document.getElementById('step2-next').disabled = true;
+      return;
+    }
+
+    selectedSlot = null;
+    document.getElementById('step2-next').disabled = true;
+
+    grid.innerHTML = res.data.slots.map(slot => {
+      const time = new Date(slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `
+        <button onclick="selectSlot('${slot}', this)" data-slot="${slot}"
+          class="slot-btn py-2.5 px-3 rounded-xl border border-slate-700/50 bg-slate-800/40 hover:border-blue-500/50 hover:bg-blue-600/10 text-slate-300 hover:text-blue-400 text-sm font-medium transition-all">
+          ${time}
+        </button>
+      `;
+    }).join('');
+  }
+
+  function selectSlot(slot, btn) {
+    selectedSlot = slot;
+    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('border-blue-500/70', 'bg-blue-600/20', 'text-blue-400'));
+    btn.classList.add('border-blue-500/70', 'bg-blue-600/20', 'text-blue-400');
+    document.getElementById('step2-next').disabled = false;
+  }
+
+  function buildConfirmation() {
+    const date = new Date(selectedSlot).toLocaleString();
+    document.getElementById('confirm-details').innerHTML = `
+      <div class="bg-slate-900/40 rounded-xl p-4 space-y-3">
+        <div class="flex justify-between text-sm"><span class="text-slate-400">${_t('Doctor')}</span><span class="font-medium text-white">${selectedDoctor.name}</span></div>
+        <div class="flex justify-between text-sm"><span class="text-slate-400">${_t('Specialty')}</span><span class="text-blue-400">${selectedDoctor.specialty || _t('General')}</span></div>
+        <div class="flex justify-between text-sm"><span class="text-slate-400">${_t('Date & Time')}</span><span class="font-medium text-white">${date}</span></div>
+        <div class="flex justify-between text-sm"><span class="text-slate-400">${_t('Patient')}</span><span class="font-medium text-white">${document.getElementById('guest-name').value}</span></div>
+        <div class="flex justify-between text-sm"><span class="text-slate-400">${_t('Phone')}</span><span class="text-white">${document.getElementById('guest-phone').value}</span></div>
+        ${document.getElementById('booking-reason').value ? `<div class="flex justify-between text-sm"><span class="text-slate-400">${_t('Reason')}</span><span class="text-white max-w-xs text-right">${document.getElementById('booking-reason').value}</span></div>` : ''}
+      </div>
+    `;
+  }
+
+  async function submitBooking() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> ' + _t('Booking…');
+
+    const body = {
+      doctor_id: selectedDoctor.id,
+      scheduled_at: selectedSlot,
+      guest_name: document.getElementById('guest-name').value,
+      guest_phone: document.getElementById('guest-phone').value,
+      guest_email: document.getElementById('guest-email').value || null,
+      reason: document.getElementById('booking-reason').value || null,
+      website: document.getElementById('hp-website').value || null,
+      confirm_email: document.getElementById('hp-confirm-email').value || null,
+    };
+
+    try {
+      const res = await fetch('/api/public/book-appointment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        document.getElementById('booking-error').classList.add('hidden');
+        document.getElementById('booking-success').classList.remove('hidden');
+        document.getElementById('success-ref').textContent = `Reference: #${data.data.id} · Status: ${data.data.status}`;
+        document.getElementById('confirm-actions').innerHTML = `
+          <a href="/booking" class="btn-secondary flex-1 justify-center text-center">{{ _('Book Another') }}</a>
+          <a href="/chat" class="btn-primary flex-1 justify-center text-center">💬 {{ _('Chat with AI') }}</a>
+        `;
+      } else {
+        let msg = _t('Booking failed. Please try again.');
+        if (Array.isArray(data.detail)) {
+          msg = data.detail.map(e => e.msg || String(e)).join(', ');
+        } else if (typeof data.detail === 'string') {
+          msg = data.detail;
+        }
+        document.getElementById('booking-error').textContent = msg;
+        document.getElementById('booking-error').classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> ' + _t('Confirm Booking');
+        if (window.lucide) lucide.createIcons();
+      }
+    } catch {
+      document.getElementById('booking-error').textContent = _t('Network error. Please try again.');
+      document.getElementById('booking-error').classList.remove('hidden');
+      btn.disabled = false;
+      btn.innerHTML = _t('Confirm Booking');
+    }
+  }
+
+  // Init
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+    loadDoctors();
+    loadSlots();
+  });
+</script>
+{% endblock %}

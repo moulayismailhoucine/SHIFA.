@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Manage Nurses") }}{% endblock %}
+{% block page_title %}{{ _("Manage Nurses") }}{% endblock %}
+{% block page_subtitle %}{{ _("Add, edit and assign doctors to nurses.") }}{% endblock %}
+
+{% block content %}
+<!-- Stats bar -->
+<div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-emerald-600/15 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-400"></i>
+    </div>
+    <div>
+      <p class="text-xs text-slate-500 uppercase tracking-wide font-semibold">{{ _("Total") }}</p>
+      <p class="text-xl font-bold" id="stat-total">—</p>
+    </div>
+  </div>
+  <div class="card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-green-600/15 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="circle-check" class="w-5 h-5 text-green-400"></i>
+    </div>
+    <div>
+      <p class="text-xs text-slate-500 uppercase tracking-wide font-semibold">{{ _("Active") }}</p>
+      <p class="text-xl font-bold" id="stat-active">—</p>
+    </div>
+  </div>
+  <div class="card p-4 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-slate-600/15 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="circle-x" class="w-5 h-5 text-slate-400"></i>
+    </div>
+    <div>
+      <p class="text-xs text-slate-500 uppercase tracking-wide font-semibold">{{ _("Inactive") }}</p>
+      <p class="text-xl font-bold" id="stat-inactive">—</p>
+    </div>
+  </div>
+</div>
+
+<!-- Main card -->
+<div class="card">
+  <div class="flex items-center justify-between p-5" style="border-bottom:1px solid var(--border)">
+    <div class="flex items-center gap-2">
+      <i data-lucide="heart-pulse" class="w-5 h-5 text-emerald-400"></i>
+      <h3 class="font-semibold">{{ _("Nurses") }}</h3>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+        <input id="search-input" type="text" placeholder="{{ _("Search nurses…") }}"
+               class="input pl-9 py-2 text-sm w-52" oninput="filterNurses()" />
+      </div>
+      <button onclick="openCreateModal()" class="btn-primary text-sm py-2">
+        <i data-lucide="user-plus" class="w-4 h-4"></i> {{ _("Add Nurse") }}
+      </button>
+    </div>
+  </div>
+
+  <div id="nurses-table" class="overflow-x-auto">
+    <div class="flex items-center justify-center py-14 text-slate-500 gap-2">
+      <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> {{ _("Loading…") }}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+<!-- ═══════════════════════ MODALS ═══════════════════════ -->
+{% block scripts %}
+
+<!-- Create Nurse Modal -->
+<div id="modal-create" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl w-full max-w-lg animate-slide-up" style="max-height:90vh;overflow-y:auto">
+    <div class="flex items-center justify-between p-6" style="border-bottom:1px solid var(--border)">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <i data-lucide="user-plus" class="w-5 h-5 text-emerald-400"></i> {{ _("Create New Nurse") }}
+      </h2>
+      <button onclick="closeModal('modal-create')" class="text-slate-500 hover:text-red-400 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="form-create" onsubmit="createNurse(event)" class="p-6 space-y-4">
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ _("Account Details") }}</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Full Name") }} *</label>
+          <input name="name" class="input" placeholder="Nurse Jane Doe" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Username") }} *</label>
+          <input name="username" class="input" placeholder="nurse.jdoe" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Email") }} *</label>
+          <input name="email" type="email" class="input" placeholder="jane@hospital.com" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Password") }} *</label>
+          <input name="password" type="password" class="input" placeholder="{{ _("Min 8 chars") }}" required minlength="8" />
+        </div>
+      </div>
+
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest pt-2">{{ _("Profile Details") }}</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Assigned Doctor") }}</label>
+          <select name="doctor_id" id="create-doctor-id" class="input">
+            <option value="">— {{ _("None") }} —</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Department") }}</label>
+          <input name="department" class="input" placeholder="{{ _('e.g. ICU, Emergency') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Shift") }}</label>
+          <select name="shift" class="input">
+            <option value="">— {{ _("Select") }} —</option>
+            <option value="Day">{{ _("Day") }}</option>
+            <option value="Evening">{{ _("Evening") }}</option>
+            <option value="Night">{{ _("Night") }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Phone") }}</label>
+          <input name="phone" class="input" placeholder="+1 555-0000" />
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("License Number") }}</label>
+          <input name="license_number" class="input" placeholder="RN-12345" />
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('modal-create')" class="btn-secondary flex-1 justify-center">{{ _("Cancel") }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center" style="background:#059669">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _("Create Nurse") }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Nurse Modal -->
+<div id="modal-edit" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl w-full max-w-lg animate-slide-up" style="max-height:90vh;overflow-y:auto">
+    <div class="flex items-center justify-between p-6" style="border-bottom:1px solid var(--border)">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <i data-lucide="pencil" class="w-5 h-5 text-emerald-400"></i> {{ _("Edit Nurse") }}
+      </h2>
+      <button onclick="closeModal('modal-edit')" class="text-slate-500 hover:text-red-400 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="form-edit" onsubmit="saveNurse(event)" class="p-6 space-y-4">
+      <input type="hidden" id="edit-nurse-id" />
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Full Name") }}</label>
+          <input id="edit-name" name="name" class="input" placeholder="{{ _("Full name") }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Username") }}</label>
+          <input id="edit-username" name="username" class="input" placeholder="{{ _("Username") }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Email") }}</label>
+          <input id="edit-email" name="email" type="email" class="input" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("New Password") }}</label>
+          <input id="edit-password" name="password" type="password" class="input" placeholder="{{ _("Leave blank to keep") }}" minlength="8" />
+        </div>
+      </div>
+
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest pt-2">{{ _("Profile Details") }}</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Assigned Doctor") }}</label>
+          <select name="doctor_id" id="edit-doctor-id" class="input">
+            <option value="">— {{ _("None") }} —</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Department") }}</label>
+          <input id="edit-department" name="department" class="input" placeholder="{{ _('e.g. ICU, Emergency') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Shift") }}</label>
+          <select name="shift" id="edit-shift" class="input">
+            <option value="">— {{ _("Select") }} —</option>
+            <option value="Day">{{ _("Day") }}</option>
+            <option value="Evening">{{ _("Evening") }}</option>
+            <option value="Night">{{ _("Night") }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Phone") }}</label>
+          <input id="edit-phone" name="phone" class="input" placeholder="+1 555-0000" />
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("License Number") }}</label>
+          <input id="edit-license-number" name="license_number" class="input" placeholder="RN-12345" />
+        </div>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('modal-edit')" class="btn-secondary flex-1 justify-center">{{ _("Cancel") }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center" style="background:#059669">
+          <i data-lucide="save" class="w-4 h-4"></i> {{ _("Save Changes") }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div id="modal-delete" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl w-full max-w-sm animate-slide-up p-6">
+    <div class="flex flex-col items-center text-center gap-4">
+      <div class="w-14 h-14 rounded-full bg-red-600/15 flex items-center justify-center">
+        <i data-lucide="trash-2" class="w-7 h-7 text-red-400"></i>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold">{{ _("Delete Nurse?") }}</h2>
+        <p class="text-sm text-slate-500 mt-1">{{ _("This will permanently remove the nurse account. This cannot be undone.") }}</p>
+      </div>
+      <div class="flex gap-3 w-full">
+        <button onclick="closeModal('modal-delete')" class="btn-secondary flex-1 justify-center">{{ _("Cancel") }}</button>
+        <button id="btn-confirm-delete" class="btn-danger flex-1 justify-center">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> {{ _("Delete") }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window._T = {
+    "Failed to load nurses": "{{ _("Failed to load nurses") }}",
+    "No nurses found": "{{ _("No nurses found") }}",
+    "Add one to get started": "{{ _("Add one to get started") }}",
+    "Active": "{{ _("Active") }}",
+    "Inactive": "{{ _("Inactive") }}",
+    "Edit": "{{ _("Edit") }}",
+    "Deactivate": "{{ _("Deactivate") }}",
+    "Activate": "{{ _("Activate") }}",
+    "Delete": "{{ _("Delete") }}",
+    "Nurse": "{{ _("Nurse") }}",
+    "Username": "{{ _("Username") }}",
+    "Department": "{{ _("Department") }}",
+    "Assigned Doctor": "{{ _("Assigned Doctor") }}",
+    "Shift": "{{ _("Shift") }}",
+    "Joined": "{{ _("Joined") }}",
+    "Status": "{{ _("Status") }}",
+    "Actions": "{{ _("Actions") }}",
+    "None": "{{ _("None") }}",
+    "Nurse created successfully!": "{{ _("Nurse created successfully!") }}",
+    "Nurse updated!": "{{ _("Nurse updated!") }}",
+    "Nurse deleted": "{{ _("Nurse deleted") }}",
+    "Failed to create nurse": "{{ _("Failed to create nurse") }}",
+    "Failed to update nurse": "{{ _("Failed to update nurse") }}",
+    "Failed to delete nurse": "{{ _("Failed to delete nurse") }}",
+    "Network error": "{{ _("Network error") }}",
+  };
+
+  let allNurses = [];
+
+  const token  = () => Auth.getToken();
+  const heads  = () => ({ Authorization: `Bearer ${token()}` });
+  const jheads = () => ({ 'Content-Type': 'application/json', ...heads() });
+
+  function closeModal(id) {
+    const m = document.getElementById(id);
+    m.style.display = 'none';
+    m.classList.add('hidden');
+  }
+  function openModal(id) {
+    const m = document.getElementById(id);
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+    setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 50);
+  }
+
+  // ── Load & render ────────────────────────────────────────────────────
+  async function loadNurses() {
+    const res = await fetch('/api/admin/nurses?limit=100', { headers: heads() })
+      .then(r => r.json()).catch(() => null);
+    if (!res?.success) {
+      document.getElementById('nurses-table').innerHTML =
+        `<p class="text-center py-10 text-red-400">${_t('Failed to load nurses')}.</p>`;
+      return;
+    }
+    allNurses = res.data.items;
+    updateStats(allNurses);
+    renderTable(allNurses);
+  }
+
+  function updateStats(list) {
+    document.getElementById('stat-total').textContent    = list.length;
+    document.getElementById('stat-active').textContent   = list.filter(n => n.is_active).length;
+    document.getElementById('stat-inactive').textContent = list.filter(n => !n.is_active).length;
+  }
+
+  function renderTable(list) {
+    if (!list.length) {
+      document.getElementById('nurses-table').innerHTML =
+        `<div class="flex flex-col items-center justify-center py-16 gap-3 text-slate-500">
+           <i data-lucide="heart-pulse" class="w-10 h-10 opacity-30"></i>
+           <p class="text-sm">${_t('No nurses found')}. ${_t('Add one to get started')}.</p>
+         </div>`;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    const rows = list.map(n => {
+      const initials = n.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const activeBadge = n.is_active
+        ? `<span class="badge bg-green-600/20 text-green-400">${_t('Active')}</span>`
+        : `<span class="badge bg-slate-700/50 text-slate-400">${_t('Inactive')}</span>`;
+      const joined = n.created_at ? new Date(n.created_at).toLocaleDateString() : '—';
+
+      return `
+        <tr class="table-row-hover border-t" style="border-color:var(--border)">
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-emerald-600/20 flex items-center justify-center text-xs font-bold text-emerald-400 flex-shrink-0">${initials}</div>
+              <div>
+                <p class="font-medium text-sm">${n.name}</p>
+                <p class="text-xs" style="color:var(--text-muted)">${n.email}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-3 text-sm font-mono" style="color:var(--text-muted)">${n.username || '—'}</td>
+          <td class="px-5 py-3 text-sm">${n.department || '—'}</td>
+          <td class="px-5 py-3 text-sm">${n.doctor_name || '—'}</td>
+          <td class="px-5 py-3 text-sm">${n.shift || '—'}</td>
+          <td class="px-5 py-3 text-sm">${joined}</td>
+          <td class="px-5 py-3">${activeBadge}</td>
+          <td class="px-5 py-3">
+            <div class="flex items-center gap-1">
+              <button onclick="openEditModal(${n.id})" title="${_t('Edit')}"
+                class="p-1.5 rounded-lg hover:bg-blue-600/15 text-slate-400 hover:text-blue-400 transition-colors">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button onclick="toggleActive(${n.id}, ${n.is_active})" title="${n.is_active ? _t('Deactivate') : _t('Activate')}"
+                class="p-1.5 rounded-lg ${n.is_active ? 'hover:bg-yellow-600/15 hover:text-yellow-400' : 'hover:bg-green-600/15 hover:text-green-400'} text-slate-400 transition-colors">
+                <i data-lucide="${n.is_active ? 'toggle-right' : 'toggle-left'}" class="w-4 h-4"></i>
+              </button>
+              <button onclick="confirmDelete(${n.id})" title="${_t('Delete')}"
+                class="p-1.5 rounded-lg hover:bg-red-600/15 text-slate-400 hover:text-red-400 transition-colors">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('nurses-table').innerHTML = `
+      <table class="w-full text-sm">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Nurse')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Username')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Department')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Assigned Doctor')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Shift')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Joined')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Status')}</th>
+            <th class="text-left px-5 py-3 text-xs uppercase tracking-wide font-semibold">${_t('Actions')}</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function filterNurses() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const filtered = allNurses.filter(n =>
+      n.name.toLowerCase().includes(q) ||
+      (n.email || '').toLowerCase().includes(q) ||
+      (n.username || '').toLowerCase().includes(q) ||
+      (n.department || '').toLowerCase().includes(q) ||
+      (n.doctor_name || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  }
+
+  // ── Doctors dropdown ────────────────────────────────────────────────────
+  async function loadDoctors() {
+    const res = await fetch('/api/admin/doctors?limit=200', { headers: heads() })
+      .then(r => r.json()).catch(() => null);
+    if (!res?.success) return;
+    const doctors = res.data.items || [];
+    const createSelect = document.getElementById('create-doctor-id');
+    const editSelect = document.getElementById('edit-doctor-id');
+    const opts = [`<option value="">— ${_t('None')} —</option>`]
+      .concat(doctors.map(d => `<option value="${d.id}">${d.name}</option>`))
+      .join('');
+    if (createSelect) { createSelect.innerHTML = opts; }
+    if (editSelect) { editSelect.innerHTML = opts; }
+  }
+
+  // ── Create ─────────────────────────────────────────────────────────────
+  function openCreateModal() {
+    document.getElementById('form-create').reset();
+    loadDoctors();
+    openModal('modal-create');
+  }
+
+  function _errMsg(res) {
+    if (!res) return _t('Network error. Please try again.');
+    if (typeof res.detail === 'string') return res.detail;
+    if (Array.isArray(res.detail)) return res.detail.map(e => e.msg).join('; ');
+    return _t('Failed to create nurse');
+  }
+
+  async function createNurse(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.role = 'nurse';
+    data.is_active = true;
+    // Normalize empty strings to null / proper types
+    if (!data.doctor_id) delete data.doctor_id;
+    if (!data.department) delete data.department;
+    if (!data.shift) delete data.shift;
+    if (!data.phone) delete data.phone;
+    if (!data.license_number) delete data.license_number;
+
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: jheads(),
+        body: JSON.stringify(data),
+      });
+      const res = await r.json();
+      if (r.ok && res.success) {
+        closeModal('modal-create');
+        e.target.reset();
+        showToast(_t('Nurse created successfully!'));
+        loadNurses();
+      } else {
+        showToast(_errMsg(res), 'error');
+      }
+    } catch {
+      showToast(_t('Network error. Please try again.'), 'error');
+    }
+  }
+
+  // ── Edit ───────────────────────────────────────────────────────────────
+  function openEditModal(nurseId) {
+    const n = allNurses.find(x => x.id === nurseId);
+    if (!n) return;
+    document.getElementById('edit-nurse-id').value  = n.id;
+    document.getElementById('edit-name').value      = n.name || '';
+    document.getElementById('edit-username').value  = n.username || '';
+    document.getElementById('edit-email').value     = n.email || '';
+    document.getElementById('edit-password').value  = '';
+    document.getElementById('edit-department').value  = n.department || '';
+    document.getElementById('edit-shift').value     = n.shift || '';
+    document.getElementById('edit-phone').value     = n.phone || '';
+    document.getElementById('edit-license-number').value = n.license_number || '';
+    loadDoctors().then(() => {
+      document.getElementById('edit-doctor-id').value = n.doctor_id || '';
+    });
+    openModal('modal-edit');
+  }
+
+  async function saveNurse(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-nurse-id').value;
+    const data = Object.fromEntries(new FormData(e.target));
+    // Strip blank password so it's not sent
+    if (!data.password) delete data.password;
+    // Strip blanks
+    Object.keys(data).forEach(k => { if (data[k] === '') delete data[k]; });
+    // Ensure explicit null for cleared doctor_id so backend can unset it
+    if (!data.doctor_id) data.doctor_id = null;
+
+    try {
+      const r = await fetch(`/api/admin/nurses/${id}`, {
+        method: 'PATCH',
+        headers: jheads(),
+        body: JSON.stringify(data),
+      });
+      const res = await r.json();
+      if (r.ok && res.success) {
+        closeModal('modal-edit');
+        showToast(_t('Nurse updated!'));
+        loadNurses();
+      } else {
+        showToast(_errMsg(res) || _t('Failed to update nurse'), 'error');
+      }
+    } catch {
+      showToast(_t('Network error. Please try again.'), 'error');
+    }
+  }
+
+  // ── Toggle active ───────────────────────────────────────────────────────
+  async function toggleActive(nurseId, currentlyActive) {
+    try {
+      const r = await fetch(`/api/admin/nurses/${nurseId}/toggle-active`, {
+        method: 'PATCH',
+        headers: heads(),
+      });
+      const res = await r.json();
+      if (r.ok && res?.success) {
+        showToast(_t('Nurse updated!'), res.is_active ? 'success' : 'warning');
+        loadNurses();
+      } else {
+        showToast(_errMsg(res) || _t('Failed to update nurse'), 'error');
+      }
+    } catch {
+      showToast(_t('Network error. Please try again.'), 'error');
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────
+  function confirmDelete(nurseId) {
+    document.getElementById('btn-confirm-delete').onclick = () => deleteNurse(nurseId);
+    openModal('modal-delete');
+  }
+
+  async function deleteNurse(nurseId) {
+    try {
+      const r = await fetch(`/api/admin/nurses/${nurseId}`, {
+        method: 'DELETE',
+        headers: heads(),
+      });
+      if (r.status === 204) {
+        closeModal('modal-delete');
+        showToast(_t('Nurse deleted'), 'info');
+        loadNurses();
+      } else {
+        const body = await r.json().catch(() => ({}));
+        showToast(_errMsg(body) || _t('Failed to delete nurse'), 'error');
+      }
+    } catch {
+      showToast(_t('Network error. Please try again.'), 'error');
+    }
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    loadNurses();
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+{% endblock %}
