@@ -5,7 +5,7 @@ from pathlib import Path
 # Paths
 BASE_DIR = Path(__file__).parent
 MODEL_DIR = BASE_DIR / "models"
-MODEL_PATH = MODEL_DIR / "mura_mobilenetv2.keras"
+MODEL_PATH = MODEL_DIR / "bone_fracture_model.h5"
 MURA_DIR = BASE_DIR / "data" / "mura"
 
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
