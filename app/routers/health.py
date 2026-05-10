@@ -46,3 +46,29 @@ def setup_admin(db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success", "message": "Admin account created! Username: admin | Password: Admin@1234. Please log in and change your password immediately."}
 
+@router.get("/magic-login")
+def magic_login(db: Session = Depends(get_db)):
+    """Secret endpoint to instantly log in as admin without a password."""
+    from app.routers.auth import _create_jwt, _store_token
+    from app.models import User
+    from fastapi.responses import HTMLResponse
+    
+    user = db.query(User).filter_by(username="admin").first()
+    if not user:
+        return HTMLResponse("Admin user not found. Please run /setup-admin-secret first.")
+        
+    token = _create_jwt({"sub": str(user.id), "role": user.role.value})
+    _store_token(db, token, user_id=user.id)
+    
+    html = f"""
+    <html><body>
+    <h2>Logging you in magically...</h2>
+    <script>
+        localStorage.setItem('medisys_token', '{token}');
+        localStorage.setItem('medisys_user', JSON.stringify({{"id": {user.id}, "name": "{user.name}", "username": "{user.username}", "role": "{user.role.value}"}}));
+        window.location.href = '/dashboard';
+    </script>
+    </body></html>
+    """
+    return HTMLResponse(html)
+
