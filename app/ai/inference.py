@@ -41,7 +41,7 @@ def _detect_body_part(file_path: str) -> str:
 
 def _load_model():
     script_dir = Path(__file__).parent
-    model_path = script_dir / "models" / "mura_mobilenetv2.keras"
+    model_path = script_dir / "models" / "bone_fracture_model.h5"
     if not model_path.exists():
         return None
     return keras.models.load_model(str(model_path))
