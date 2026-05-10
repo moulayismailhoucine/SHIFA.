@@ -314,7 +314,7 @@ class MedicationItem(BaseModel):
 class OrdonnanceCreate(BaseModel):
     medical_record_id: Optional[int] = None
     patient_id: int
-    doctor_id: int
+    doctor_id: Optional[int] = None
     medications: List[MedicationItem] = []
     instructions: Optional[str] = None
     issued_date: date

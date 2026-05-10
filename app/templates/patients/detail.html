@@ -162,8 +162,15 @@
 
     <!-- Ordonnances -->
     <div id="tab-ordo" class="tab-panel">
-      <div class="overflow-x-auto">
-        <table class="w-full">
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold" style="color:var(--text)">{{ _('Ordonnances') }}</h3>
+          <button onclick="openOrdoModal()" class="btn-primary" style="font-size:.8125rem;padding:.4rem .75rem" id="new-ordo-btn">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> {{ _('Add Ordonnance') }}
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full">
           <thead><tr>
             <th class="table-th">{{ _('Date') }}</th>
             <th class="table-th">{{ _('Medications') }}</th>
@@ -174,6 +181,7 @@
             <tr><td colspan="4" class="table-td text-center py-10" style="color:var(--text-muted)">{{ _('Loading…') }}</td></tr>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
 
@@ -385,6 +393,40 @@
     </form>
   </div>
 </div>
+
+<!-- Ordonnance Create Modal -->
+<div id="ordo-modal" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:28rem;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-4">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _('Add Ordonnance') }}</h2>
+      <button onclick="closeOrdoModal()" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="ordo-form" onsubmit="saveOrdo(event)" class="space-y-3">
+      <div>
+        <label class="section-title">{{ _('Medications') }} *</label>
+        <textarea name="medications_text" rows="3" class="input" placeholder="Paracetamol 500mg, 1 pill, 3x/day, 5 days&#10;Amoxicillin..." required></textarea>
+        <p class="text-[0.65rem] text-slate-500 mt-1">Enter each medication on a new line</p>
+      </div>
+      <div>
+        <label class="section-title">{{ _('Instructions') }}</label>
+        <textarea name="instructions" rows="2" class="input" placeholder="{{ _('Optional instructions...') }}"></textarea>
+      </div>
+      <div>
+        <label class="section-title">{{ _('Valid Until') }}</label>
+        <input name="valid_until" type="date" class="input" />
+      </div>
+      <div id="ordo-err" class="hidden p-3 text-sm text-red-500" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:.75rem"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" onclick="closeOrdoModal()" class="btn-secondary flex-1" style="justify-content:center">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1" style="justify-content:center">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _('Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -442,6 +484,9 @@
     "Lab result uploaded!": "{{ _('Lab result uploaded!') }}",
     "Upload failed": "{{ _('Upload failed') }}",
     "Add Lab Result": "{{ _('Add Lab Result') }}",
+    "Add Ordonnance": "{{ _('Add Ordonnance') }}",
+    "Ordonnance added!": "{{ _('Ordonnance added!') }}",
+    "Failed to add ordonnance": "{{ _('Failed to add ordonnance') }}",
   };
   function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
 
@@ -567,6 +612,8 @@
     if (userRole !== 'doctor' && userRole !== 'admin') {
       const nursingBtn = document.getElementById('new-nursing-order-btn');
       if (nursingBtn) nursingBtn.style.display = 'none';
+      const ordoBtn = document.getElementById('new-ordo-btn');
+      if (ordoBtn) ordoBtn.style.display = 'none';
     }
 
     // Header
@@ -920,6 +967,56 @@
     } else {
       const err = document.getElementById('lab-upload-err');
       err.textContent = res?.detail || _t('Upload failed');
+      err.classList.remove('hidden');
+    }
+  }
+
+  // ── Ordonnance Modal ──────────────────────────────────────────────
+  function openOrdoModal() {
+    document.getElementById('ordo-form').reset();
+    document.getElementById('ordo-err').classList.add('hidden');
+    const today = new Date();
+    today.setDate(today.getDate() + 30); // Default valid until 30 days
+    document.querySelector('input[name="valid_until"]').value = today.toISOString().split('T')[0];
+    const m = document.getElementById('ordo-modal');
+    m.style.display = 'flex'; m.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  }
+  function closeOrdoModal() {
+    const m = document.getElementById('ordo-modal');
+    m.style.display = 'none'; m.classList.add('hidden');
+  }
+  async function saveOrdo(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    
+    // Parse medications from textarea
+    const medLines = data.medications_text.split('\\n').filter(l => l.trim());
+    const medications = medLines.map(line => {
+      return { name: line.trim(), dose: "As prescribed", frequency: "As prescribed", duration: "As prescribed" };
+    });
+    
+    const payload = {
+      patient_id: PATIENT_ID,
+      medications: medications,
+      instructions: data.instructions || null,
+      issued_date: new Date().toISOString().split('T')[0],
+      valid_until: data.valid_until || null
+    };
+    
+    const res = await fetch('/api/ordonnances', {
+      method: 'POST',
+      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(r => r.json()).catch(() => null);
+
+    if (res && res.success) {
+      closeOrdoModal();
+      showToast(_t('Ordonnance added!'));
+      loadProfile();
+    } else {
+      const err = document.getElementById('ordo-err');
+      err.textContent = res?.detail || _t('Failed to add ordonnance');
       err.classList.remove('hidden');
     }
   }

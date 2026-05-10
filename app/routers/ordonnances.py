@@ -52,11 +52,31 @@ def create_ordonnance(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("admin", "doctor")),
 ):
+    from app.models import Doctor
+    doctor = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
+    if not doctor and current_user.role.value == "doctor":
+        doctor = Doctor(user_id=current_user.id, specialty="General", department="General")
+        db.add(doctor)
+        db.commit()
+        db.refresh(doctor)
+        
+    doctor_id = body.doctor_id
+    if current_user.role.value == "doctor":
+        if not doctor:
+            raise HTTPException(status_code=400, detail="No doctor profile found")
+        doctor_id = doctor.id
+    elif not doctor_id:
+        doc = db.query(Doctor).first()
+        if doc: doctor_id = doc.id
+
+    if not doctor_id:
+        raise HTTPException(status_code=400, detail="A valid doctor_id is required")
+
     meds = [m.model_dump() for m in body.medications]
     o = Ordonnance(
         medical_record_id=body.medical_record_id,
         patient_id=body.patient_id,
-        doctor_id=body.doctor_id,
+        doctor_id=doctor_id,
         medications=meds,
         instructions=body.instructions,
         issued_date=body.issued_date,

@@ -67,6 +67,12 @@ def create_order(
     """Doctor creates a nursing order for a patient."""
     try:
         doctor = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
+        if not doctor and current_user.role.value == "doctor":
+            doctor = Doctor(user_id=current_user.id, specialty="General", department="General")
+            db.add(doctor)
+            db.commit()
+            db.refresh(doctor)
+            
         if not doctor and current_user.role.value != "admin":
             raise HTTPException(status_code=403, detail="Only doctors can create nursing orders")
 
