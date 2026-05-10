@@ -27,11 +27,14 @@ def setup_admin(db: Session = Depends(get_db)):
     import bcrypt
     from app.models import User
     
+    hashed = bcrypt.hashpw("Admin@1234".encode(), bcrypt.gensalt()).decode()
     existing = db.query(User).filter_by(username="admin").first()
     if existing:
-        return {"status": "error", "message": "Admin already exists! You can log in with username 'admin'."}
+        existing.password_hash = hashed
+        existing.is_active = True
+        db.commit()
+        return {"status": "success", "message": "Admin account already existed. Its password has been FORCIBLY RESET to: Admin@1234"}
         
-    hashed = bcrypt.hashpw("Admin@1234".encode(), bcrypt.gensalt()).decode()
     new_admin = User(
         name="Super Admin",
         email="admin@myclinic.com",
