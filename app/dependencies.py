@@ -1,5 +1,6 @@
 """Auth dependencies — JWT decode, NFC lookup, role enforcement."""
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -13,6 +14,7 @@ from app.database import get_db
 from app.models import User, Patient, AuthToken
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 bearer = HTTPBearer(auto_error=False)
 
 
