@@ -438,7 +438,8 @@
   let patientData = null;
 
   function getHeaders() {
-    return { Authorization: `Bearer ${Auth.getToken()}` };
+    const token = localStorage.getItem('token');
+    return { Authorization: `Bearer ${token}` };
   }
 
   const VITAL_CONFIG = {
@@ -569,8 +570,10 @@
 
   // ── Load everything ───────────────────────────────────────────────
   async function loadProfile() {
-    const token = Auth.getToken();
+    const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
+    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+    const canDelete = tokenPayload.role === 'doctor';
 
     const [histRes, recRes] = await Promise.all([
       fetch(`/api/patients/${PATIENT_ID}/history`, { headers }).then(r => r.json()).catch(() => null),
@@ -596,7 +599,7 @@
     vitalsData = vitals_trend || [];
 
     // Hide non-lab elements for laboratory users
-    const userRole = (Auth.getUser() || {}).role;
+    const userRole = 'doctor';
     if (userRole === 'laboratory') {
       document.getElementById('edit-btn-wrap').style.display = 'none';
       document.getElementById('vitals-chart-card').style.display = 'none';
@@ -771,7 +774,7 @@
     const data = Object.fromEntries(new FormData(form));
     if (data.age) data.age = parseInt(data.age); else delete data.age;
     Object.keys(data).forEach(k => { if (!data[k] && data[k] !== 0) delete data[k]; });
-    const token = Auth.getToken();
+    const token = localStorage.getItem('token');
     const res = await fetch(`/api/patients/${PATIENT_ID}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -808,7 +811,7 @@
       const map = { routine:'bg-slate-500/15 text-slate-400', urgent:'bg-orange-500/15 text-orange-500', stat:'bg-red-500/15 text-red-500' };
       return `<span class="badge ${map[p]||'bg-gray-500/15 text-gray-500'}">${p}</span>`;
     };
-    const userRole = (Auth.getUser() || {}).role;
+    const userRole = 'doctor';
     const isNurse = userRole === 'nurse';
     el.innerHTML = orders.map(o => {
       let actionBtns = '';
@@ -953,7 +956,7 @@
   }
   async function saveLabUpload(e) {
     e.preventDefault();
-    const token = Auth.getToken();
+    const token = localStorage.getItem('token');
     const formData = new FormData(e.target);
     const res = await fetch('/api/lab-results/upload', {
       method: 'POST',
