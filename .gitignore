@@ -28,5 +28,4 @@ Thumbs.db
 
 # Model data (large files)
 app/ai/data/
-app/ai/models/*.keras
-app/ai/models/*.h5
+# Note: keep model files in repo for Render deployment

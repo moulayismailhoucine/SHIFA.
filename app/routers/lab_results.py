@@ -1,11 +1,14 @@
 """Lab results router — upload and list."""
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 from app.dependencies import get_current_user, require_roles
 from app.models import LabResult, User
 from app.schemas import LabResultOut
@@ -79,8 +82,8 @@ def _run_ai_analysis(result_id: int):
                 db.commit()
         finally:
             db.close()
-    except Exception:
-        pass  # Silent fail — AI should not block uploads
+    except Exception as e:
+        logger.error(f"AI analysis failed for result {result_id}: {e}")
 
 
 @router.post("/upload", status_code=201)

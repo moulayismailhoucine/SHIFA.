@@ -13,9 +13,14 @@ from pathlib import Path
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-import numpy as np
-import tensorflow as tf
-from tensorflow import keras
+try:
+    import numpy as np
+    import tensorflow as tf
+    from tensorflow import keras
+    TF_AVAILABLE = True
+except Exception as _tf_err:
+    TF_AVAILABLE = False
+    _TF_ERROR = str(_tf_err)
 
 # ── Config (duplicated here to keep script standalone) ────────────
 IMG_SIZE = (224, 224)
@@ -40,11 +45,17 @@ def _detect_body_part(file_path: str) -> str:
 
 
 def _load_model():
+    if not TF_AVAILABLE:
+        return None
     script_dir = Path(__file__).parent
     model_path = script_dir / "models" / "bone_fracture_model.h5"
     if not model_path.exists():
         return None
-    return keras.models.load_model(str(model_path))
+    try:
+        return keras.models.load_model(str(model_path))
+    except Exception as e:
+        print(json.dumps({"error": f"Failed to load model: {e}"}), file=sys.stderr)
+        return None
 
 
 def _preprocess(image_path: str):
@@ -55,6 +66,9 @@ def _preprocess(image_path: str):
 
 
 def analyze(image_path: str) -> dict:
+    if not TF_AVAILABLE:
+        return {"error": f"TensorFlow not available: {_TF_ERROR}"}
+
     model = _load_model()
     if model is None:
         return {"error": "Model not found. Train first with: python -m app.ai.train"}
