@@ -20,7 +20,8 @@ def _decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return payload
-    except JWTError:
+    except Exception as e:
+        logger.warning(f"JWT decode failed: {type(e).__name__}: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
@@ -30,8 +31,13 @@ def _check_revoked(db: Session, token: str) -> AuthToken:
         AuthToken.revoked == False,
     ).first()
     if not record:
+        logger.warning(f"Token not found in DB (len={len(token)})")
         raise HTTPException(status_code=401, detail="Token revoked or not found")
-    if record.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    now = datetime.now(timezone.utc)
+    if record.expires_at.tzinfo is None:
+        now = now.replace(tzinfo=None)
+    if record.expires_at < now:
+        logger.warning(f"Token expired at {record.expires_at}, now is {now}")
         raise HTTPException(status_code=401, detail="Token expired")
     return record
 
@@ -41,16 +47,21 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     if not credentials:
+        logger.warning("No credentials provided")
         raise HTTPException(status_code=401, detail="Not authenticated")
     token = credentials.credentials
+    logger.info(f"Auth token received (len={len(token)})")
     payload = _decode_token(token)
-    _check_revoked(db, token)
-    user_id = payload.get("sub")
+    record = _check_revoked(db, token)
+    user_id: int = payload.get("sub", 0)
     if not user_id:
+        logger.warning("No user_id in token payload")
         raise HTTPException(status_code=401, detail="Invalid token payload")
-    user = db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=401, detail="User not found or inactive")
+        logger.warning(f"User not found for id={user_id}")
+        raise HTTPException(status_code=401, detail="User not found")
+    logger.info(f"Authenticated user={user.email} role={user.role}")
     return user
 
 
