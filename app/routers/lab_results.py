@@ -130,7 +130,7 @@ async def upload_lab_result(
     }
 
 
-@router.delete("/{result_id}", status_code=204)
+@router.delete("/{result_id}")
 def delete_lab_result(
     result_id: int,
     db: Session = Depends(get_db),
@@ -139,11 +139,12 @@ def delete_lab_result(
     r = db.query(LabResult).filter(LabResult.id == result_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Not found")
-        
+
     if current_user.role.value == "laboratory":
         if not current_user.laboratory or r.laboratory_id != current_user.laboratory.id:
             raise HTTPException(status_code=403, detail="You can only delete your own results")
-            
+
     delete_file(r.file_path)
     db.delete(r)
     db.commit()
+    return {"success": True}

@@ -95,6 +95,9 @@
     "No lab results yet": "{{ _('No lab results yet') }}",
     "Lab result uploaded!": "{{ _('Lab result uploaded!') }}",
     "Upload failed": "{{ _('Upload failed') }}",
+    "Delete": "{{ _('Delete') }}",
+    "Deleted": "{{ _('Deleted') }}",
+    "Delete failed": "{{ _('Delete failed') }}",
   };
   function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
 
@@ -112,10 +115,31 @@
         <td class="px-4 py-4"><span class="badge bg-slate-700 text-slate-300 text-xs">${r.category ? (catLabel[r.category] || r.category) : '—'}</span></td>
         <td class="px-4 py-4"><span class="badge bg-slate-700 text-slate-300 text-xs">${r.file_type?.split('/')[1]?.toUpperCase() || '—'}</span></td>
         <td class="px-6 py-4 text-right">
-          ${r.url ? `<a href="${r.url}" target="_blank" class="btn-secondary text-xs py-1">{{ _('View') }} →</a>` : '<span class="text-slate-600 text-xs">{{ _('No file') }}</span>'}
+          <div class="flex items-center justify-end gap-2">
+            ${r.url ? `<a href="${r.url}" target="_blank" class="btn-secondary text-xs py-1">{{ _('View') }} →</a>` : '<span class="text-slate-600 text-xs">{{ _('No file') }}</span>'}
+            <button onclick="deleteLabResult(${r.id})" class="text-red-400 hover:text-red-300 transition-colors" title="{{ _('Delete') }}">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  async function deleteLabResult(id) {
+    if (!confirm('{{ _('Delete this result permanently?') }}')) return;
+    const token = Auth.getToken();
+    const res = await fetch(`/api/lab-results/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()).catch(() => null);
+    if (res?.success) {
+      showToast(_t('Deleted'));
+      loadLabResults();
+    } else {
+      showToast(res?.detail || _t('Delete failed'), 'error');
+    }
   }
 
   function handleFileChange(input) {
