@@ -74,10 +74,17 @@ def _run_ai_analysis(result_id: int):
 
             ai_result = analyze_xray(str(image_path))
             if ai_result:
-                result.ai_diagnosis = ai_result["diagnosis"]
-                result.ai_probability = ai_result["probability"]
-                result.ai_note = ai_result["note"]
+                result.ai_diagnosis = ai_result.get("diagnosis", "Error")
+                result.ai_probability = ai_result.get("probability", 0)
+                result.ai_note = ai_result.get("note", "")
                 result.ai_model_version = "mura_mobilenetv2_v1"
+                result.ai_analyzed_at = datetime.now(timezone.utc)
+                db.commit()
+            else:
+                result.ai_diagnosis = "AI Unavailable"
+                result.ai_probability = 0
+                result.ai_note = "TensorFlow not installed or model missing. Install: pip install tensorflow-cpu"
+                result.ai_model_version = "error"
                 result.ai_analyzed_at = datetime.now(timezone.utc)
                 db.commit()
         finally:

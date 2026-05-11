@@ -129,7 +129,7 @@
 
   async function deleteLabResult(id) {
     if (!confirm('{{ _('Delete this result permanently?') }}')) return;
-    const token = Auth.getToken();
+    const token = localStorage.getItem('token');
     const res = await fetch(`/api/lab-results/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -156,7 +156,7 @@
 
   async function uploadResult(e) {
     e.preventDefault();
-    const token = Auth.getToken();
+    const token = localStorage.getItem('token');
     const formData = new FormData(e.target);
     const res = await fetch('/api/lab-results/upload', {
       method: 'POST',

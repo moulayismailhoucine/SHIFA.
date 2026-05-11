@@ -1,0 +1,33 @@
+CMD: git add -f app/ai/models/bone_fracture_model.h5
+RC: 0
+OUT: 
+ERR: 
+---
+CMD: git add app/ai/inference.py app/ai/predict.py app/ai/config.py app/routers/lab_results.py app/routers/nursing_orders.py app/schemas/__init__.py app/templates/patients/detail.html .gitignore
+RC: 0
+OUT: 
+ERR: 
+---
+CMD: git diff --cached --stat
+RC: 0
+OUT:  .gitignore                 |  3 +--
+ app/ai/inference.py        | 22 ++++++++++++++++++----
+ app/ai/predict.py          |  8 +++++++-
+ app/routers/lab_results.py |  7 +++++--
+ 4 files changed, 31 insertions(+), 9 deletions(-)
+
+ERR: 
+---
+CMD: git commit -m Fix AI for Render: add model file, make TF graceful, add logging
+RC: 0
+OUT: [main c73fc3a] Fix AI for Render: add model file, make TF graceful, add logging
+ 4 files changed, 31 insertions(+), 9 deletions(-)
+
+ERR: 
+---
+CMD: git push origin main
+RC: 128
+OUT: 
+ERR: fatal: unable to access 'https://github.com/moulayismailhoucine/SHIFA..git/': Could not resolve host: github.com
+
+---

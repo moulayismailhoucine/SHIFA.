@@ -38,10 +38,30 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def check_database_url(self):
         env_url = os.getenv("DATABASE_URL", "")
-        if env_url and "localhost" not in env_url:
-            self.database_url = env_url
-        else:
+        # No env var -> use local sqlite
+        if not env_url:
             self.database_url = "sqlite:///./medisys.db"
+            return self
+
+        # Explicit sqlite URL -> use it
+        if env_url.startswith("sqlite"):
+            self.database_url = env_url
+            return self
+
+        # Parse hostname and treat loopback addresses as local (avoid connecting to localhost in deployed envs)
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(env_url)
+            host = (parsed.hostname or "").lower()
+        except Exception:
+            host = ""
+
+        loopbacks = {"localhost", "127.0.0.1", "::1"}
+        if host in loopbacks or "localhost" in env_url:
+            self.database_url = "sqlite:///./medisys.db"
+        else:
+            self.database_url = env_url
         return self
 
 

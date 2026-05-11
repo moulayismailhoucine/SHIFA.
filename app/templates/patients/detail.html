@@ -487,6 +487,9 @@
     "Add Ordonnance": "{{ _('Add Ordonnance') }}",
     "Ordonnance added!": "{{ _('Ordonnance added!') }}",
     "Failed to add ordonnance": "{{ _('Failed to add ordonnance') }}",
+    "Delete": "{{ _('Delete') }}",
+    "Deleted": "{{ _('Deleted') }}",
+    "Delete failed": "{{ _('Delete failed') }}",
   };
   function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
 
@@ -685,17 +688,14 @@
             </div>
             <i data-lucide="external-link" class="w-4 h-4 flex-shrink-0" style="color:var(--text-muted)"></i>
           </a>
+          <button onclick="deleteLabResult(${lr.id})" style="margin-left:.5rem;color:var(--text-muted);background:none;border:none;cursor:pointer;" title="${_t('Delete')}">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
           ${aiCard}
         </div>`;
       }).join('');
     }
 
-    function renderAiCard(lr) {
-      const isNormal = lr.ai_diagnosis === 'Normal';
-      const color = isNormal ? '#10b981' : '#ef4444';
-      const bg = isNormal ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)';
-      const border = isNormal ? 'rgba(16,185,129,.25)' : 'rgba(239,68,68,.25)';
-      const icon = isNormal ? 'check-circle' : 'alert-triangle';
       return `
       <div style="margin-top:.5rem;margin-left:0;padding:.875rem 1rem;border-radius:.75rem;border:1px solid ${border};background:${bg}">
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.375rem">
@@ -1018,6 +1018,21 @@
       const err = document.getElementById('ordo-err');
       err.textContent = res?.detail || _t('Failed to add ordonnance');
       err.classList.remove('hidden');
+    }
+  }
+
+  async function deleteLabResult(id) {
+    if (!confirm('{{ _('Delete this result permanently?') }}')) return;
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/lab-results/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.json()).catch(() => null);
+    if (res?.success) {
+      showToast(_t('Deleted'));
+      loadProfile();
+    } else {
+      showToast(res?.detail || _t('Delete failed'), 'error');
     }
   }
 
