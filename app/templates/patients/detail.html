@@ -696,6 +696,7 @@
       }).join('');
     }
 
+    function renderAiCard(lr) {
       return `
       <div style="margin-top:.5rem;margin-left:0;padding:.875rem 1rem;border-radius:.75rem;border:1px solid ${border};background:${bg}">
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.375rem">
@@ -1038,6 +1039,7 @@
 
   // Expose switchTab to global for the inline onclick handlers
   window.switchTab = switchTab;
+  window.deleteLabResult = deleteLabResult;
 
   document.addEventListener('DOMContentLoaded', loadProfile);
 </script>
