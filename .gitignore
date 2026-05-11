@@ -19,9 +19,18 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Environment / secrets
+.env
+
 # Database (optional - remove if you want to track DB)
 # *.db
 # *.sqlite3
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
 
 # Logs
 *.log
