@@ -571,8 +571,19 @@
   // ── Load everything ───────────────────────────────────────────────
   async function loadProfile() {
     const token = localStorage.getItem('token');
+    if (!token) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('profile-root').innerHTML =
+        `<div class="card p-10 text-center">
+          <p class="text-red-400">${_t('Please log in to view this patient.')}</p>
+          <a href="/login" class="btn-primary mt-4 inline-flex">${_t('Go to Login')}</a>
+        </div>`;
+      document.getElementById('profile-root').classList.remove('hidden');
+      return;
+    }
     const headers = { Authorization: `Bearer ${token}` };
-    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+    let tokenPayload = {};
+    try { tokenPayload = JSON.parse(atob(token.split('.')[1])); } catch (e) { }
     const canDelete = tokenPayload.role === 'doctor';
 
     const [histRes, recRes] = await Promise.all([
