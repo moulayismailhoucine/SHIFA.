@@ -29,3 +29,4 @@ Thumbs.db
 # Model data (large files)
 app/ai/data/
 # Note: keep model files in repo for Render deployment
+node_modules
