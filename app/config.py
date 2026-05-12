@@ -45,18 +45,19 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def check_database_url(self):
-        env_url = os.getenv("DATABASE_URL", "")
-        # No env var -> use local sqlite
-        if not env_url:
-            self.database_url = "sqlite:///./medisys.db"
-            return self
+        # Pydantic already loaded .env into self.database_url (defaults to sqlite if not set)
+        env_url = self.database_url or ""
 
         # Explicit sqlite URL -> use it
         if env_url.startswith("sqlite"):
-            self.database_url = env_url
             return self
 
-        # Parse hostname and treat loopback addresses as local (avoid connecting to localhost in deployed envs)
+        # Empty or not a valid URL -> fallback to local sqlite
+        if not env_url or "://" not in env_url:
+            self.database_url = "sqlite:///./medisys.db"
+            return self
+
+        # Parse hostname and treat loopback addresses as local
         try:
             from urllib.parse import urlparse
 
