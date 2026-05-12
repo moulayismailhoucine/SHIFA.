@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     # Edge
     backend_origin: str = "http://localhost:8000"
 
+    @computed_field  # type: ignore
+    @property
+    def DB_URL(self) -> str:
+        # If no DATABASE_URL is set, fall back to SQLite for local dev
+        if not self.DATABASE_URL or self.DATABASE_URL.lower() in ("", "none", "null"):
+            return "sqlite"
+        return self.DATABASE_URL
+
     @model_validator(mode="after")
     def check_database_url(self):
         env_url = os.getenv("DATABASE_URL", "")
