@@ -438,7 +438,7 @@
   let patientData = null;
 
   function getHeaders() {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('medisys_token');
     return { Authorization: `Bearer ${token}` };
   }
 
@@ -570,7 +570,7 @@
 
   // ── Load everything ───────────────────────────────────────────────
   async function loadProfile() {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('medisys_token');
     if (!token) {
       document.getElementById('spinner').style.display = 'none';
       document.getElementById('profile-root').innerHTML =
@@ -785,7 +785,7 @@
     const data = Object.fromEntries(new FormData(form));
     if (data.age) data.age = parseInt(data.age); else delete data.age;
     Object.keys(data).forEach(k => { if (!data[k] && data[k] !== 0) delete data[k]; });
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('medisys_token');
     const res = await fetch(`/api/patients/${PATIENT_ID}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -967,7 +967,7 @@
   }
   async function saveLabUpload(e) {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('medisys_token');
     const formData = new FormData(e.target);
     const res = await fetch('/api/lab-results/upload', {
       method: 'POST',
@@ -1038,7 +1038,7 @@
 
   async function deleteLabResult(id) {
     if (!confirm('{{ _('Delete this result permanently?') }}')) return;
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('medisys_token');
     const res = await fetch(`/api/lab-results/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
