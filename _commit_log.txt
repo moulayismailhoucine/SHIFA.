@@ -1,0 +1,64 @@
+CMD: ['git', 'status', '--short']
+RC: 0
+OUT:  M _git_push_log.txt
+ M push_result.txt
+?? _commit_detail.py
+?? _commit_detail2.py
+?? _commit_log.txt
+?? _env_fix.bat
+?? _env_fix.py
+?? _git_check.py
+?? _remove_env.py
+?? git_status.txt
+?? package-lock.json
+?? package.json
+
+ERR: 
+
+CMD: ['git', 'add', 'app/templates/patients/detail.html']
+RC: 0
+OUT: 
+ERR: 
+
+CMD: ['git', 'commit', '-m', 'Fix patient detail: remove undefined Auth, use localStorage token and hardcoded doctor role']
+RC: 1
+OUT: On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   _git_push_log.txt
+	modified:   push_result.txt
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	_commit_detail.py
+	_commit_detail2.py
+	_commit_log.txt
+	_env_fix.bat
+	_env_fix.py
+	_git_check.py
+	_remove_env.py
+	git_status.txt
+	package-lock.json
+	package.json
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+ERR: 
+
+CMD: ['git', 'push', 'origin', 'main']
+RC: 0
+OUT: 
+ERR: Everything up-to-date
+
+
+CMD: ['git', 'log', '--oneline', '-3']
+RC: 0
+OUT: 34ede80 Fix patient detail: remove undefined Auth, use localStorage token and hardcoded doctor role
+ece46fc Remove .env from git tracking (security)
+acc3623 Fix: add missing logging import that broke auth
+
+ERR: 
+

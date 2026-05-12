@@ -216,6 +216,8 @@ class AppointmentCreate(BaseModel):
     guest_name: Optional[str] = None
     guest_phone: Optional[str] = None
     guest_email: Optional[str] = None
+    # Public user tracking
+    device_id: Optional[str] = None
     # Anti-bot honeypot
     website: Optional[str] = None
     confirm_email: Optional[str] = None
@@ -245,6 +247,7 @@ class AppointmentOut(BaseModel):
     notes: Optional[str]
     guest_name: Optional[str]
     guest_phone: Optional[str]
+    device_id: Optional[str]
     is_suspicious: bool
     fraud_score: int
     fraud_risk_level: Optional[str]
@@ -466,6 +469,7 @@ class PublicBookingRequest(BaseModel):
     guest_phone: str = Field(..., min_length=7, max_length=30)
     guest_email: Optional[str] = None
     reason: Optional[str] = None
+    device_id: Optional[str] = None
     # Honeypot fields
     website: Optional[str] = None
     confirm_email: Optional[str] = None

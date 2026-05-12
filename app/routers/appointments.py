@@ -15,6 +15,34 @@ from app.services.booking import validate_slot
 router = APIRouter(prefix="/api/appointments", tags=["Appointments"])
 
 
+@router.get("/my")
+def my_appointments(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return appointments for the currently logged-in user."""
+    q = db.query(Appointment)
+
+    # Filter by patient_id if user has a patient profile
+    if current_user.patient_id:
+        q = q.filter(Appointment.patient_id == current_user.patient_id)
+    # Otherwise try matching guest info by name + phone
+    elif current_user.phone:
+        q = q.filter(
+            (Appointment.guest_phone == current_user.phone) |
+            (Appointment.guest_name.ilike(f"%{current_user.name}%"))
+        )
+    else:
+        q = q.filter(Appointment.guest_name.ilike(f"%{current_user.name}%"))
+
+    if status:
+        q = q.filter(Appointment.status == status)
+
+    items = q.order_by(Appointment.scheduled_at.desc()).limit(50).all()
+    return {"success": True, "data": {"total": len(items), "items": [AppointmentOut.model_validate(a) for a in items]}}
+
+
 @router.get("/")
 def list_appointments(
     status: Optional[str] = None,

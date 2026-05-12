@@ -252,6 +252,9 @@ class Appointment(Base):
     guest_phone: Mapped[Optional[str]] = mapped_column(String(30))
     guest_email: Mapped[Optional[str]] = mapped_column(String(255))
 
+    # Public user tracking (no account needed)
+    device_id: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+
     # Fraud detection
     booking_ip: Mapped[Optional[str]] = mapped_column(String(50))
     booking_ua: Mapped[Optional[str]] = mapped_column(String(500))

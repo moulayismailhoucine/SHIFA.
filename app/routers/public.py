@@ -14,7 +14,7 @@ from app.models import (
     Doctor, Appointment, ContactMessage, Chat
 )
 from app.schemas import (
-    PublicBookingRequest, ContactCreate, ChatRequest, ChatResponse, SuccessResponse
+    PublicBookingRequest, ContactCreate, ChatRequest, ChatResponse, SuccessResponse, AppointmentOut
 )
 from app.services.booking import get_available_slots, validate_slot
 from app.services.fraud import calculate_fraud_score, log_fraud_attempt
@@ -125,6 +125,7 @@ def public_book_appointment(
         guest_name=guest_name,
         guest_phone=guest_phone,
         guest_email=guest_email,
+        device_id=body.device_id,
         booking_ip=ip,
         booking_ua=ua,
         is_suspicious=fraud["is_suspicious"],
@@ -155,6 +156,28 @@ def public_book_appointment(
             "fraud_risk_level": appt.fraud_risk_level,
         },
     }
+
+
+# ─────────────────────────────────────────────────────────────────
+# Public user appointments (no account needed)
+# ─────────────────────────────────────────────────────────────────
+
+@router.get("/my-appointments")
+def get_public_appointments(
+    device_id: str,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Return appointments for a public user identified by device_id."""
+    if not device_id or len(device_id) < 8:
+        raise HTTPException(status_code=400, detail="Invalid device_id")
+
+    q = db.query(Appointment).filter(Appointment.device_id == device_id)
+    if status:
+        q = q.filter(Appointment.status == status)
+
+    items = q.order_by(Appointment.scheduled_at.desc()).limit(50).all()
+    return {"success": True, "data": {"total": len(items), "items": [AppointmentOut.model_validate(a) for a in items]}}
 
 
 # ─────────────────────────────────────────────────────────────────
