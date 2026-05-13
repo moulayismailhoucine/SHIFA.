@@ -209,6 +209,26 @@ def submit_contact(
 
 
 # ─────────────────────────────────────────────────────────────────
+# Gemini connection test (temporary diagnostic)
+# ─────────────────────────────────────────────────────────────────
+
+@router.get("/test-ai")
+async def test_ai():
+    from app.config import get_settings
+    s = get_settings()
+    if not s.gemini_api_key:
+        return {"status": "error", "detail": "GEMINI_API_KEY not set"}
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=s.gemini_api_key.strip())
+        model = genai.GenerativeModel(model_name=s.gemini_model)
+        response = model.generate_content("say hi")
+        return {"status": 200, "model": s.gemini_model, "reply": response.text.strip()}
+    except Exception as exc:
+        return {"status": "error", "model": s.gemini_model, "detail": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────
 # AI medical chat (public — audit logged)
 # ─────────────────────────────────────────────────────────────────
 
