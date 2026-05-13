@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     # AI
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
-    groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    xai_api_key: str = ""
+    xai_model: str = "grok-3"
 
     # Rate limiting
     rate_limit_booking: str = "5/minute"

@@ -1,4 +1,4 @@
-"""AI chat service — Groq / Gemini integration with deterministic fallback."""
+"""AI chat service — xAI (Grok) / Gemini integration with deterministic fallback."""
 
 import random
 from typing import Tuple
@@ -56,29 +56,37 @@ Important guidelines:
 async def get_ai_reply(message: str) -> Tuple[str, str]:
     """
     Returns (reply_text, provider_name).
-    Tries Groq first, then Gemini, then falls back to canned replies.
+    Tries xAI (Grok) first, then Gemini, then falls back to canned replies.
     """
     import logging
     logger = logging.getLogger(__name__)
 
-    # 1) Try Groq
-    if settings.groq_api_key:
+    # 1) Try xAI (Grok)
+    if settings.xai_api_key:
         try:
-            from groq import AsyncGroq
-            client = AsyncGroq(api_key=settings.groq_api_key)
-            response = await client.chat.completions.create(
-                model=settings.groq_model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": message},
-                ],
-                temperature=0.7,
-                max_tokens=1024,
-            )
-            reply = response.choices[0].message.content.strip()
-            return reply, "groq"
+            import httpx
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    "https://api.x.ai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.xai_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.xai_model,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": message},
+                        ],
+                        "temperature": 0.7,
+                        "max_tokens": 1024,
+                    },
+                )
+                resp.raise_for_status()
+                reply = resp.json()["choices"][0]["message"]["content"].strip()
+                return reply, "xai"
         except Exception as exc:
-            logger.warning(f"Groq error: {exc}")
+            logger.warning(f"xAI error: {exc}")
 
     # 2) Try Gemini
     if settings.gemini_api_key:
