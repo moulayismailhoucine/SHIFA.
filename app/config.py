@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
     xai_api_key: str = ""
-    xai_model: str = "grok-3"
+    xai_model: str = "grok-beta"
 
     # Rate limiting
     rate_limit_booking: str = "5/minute"
