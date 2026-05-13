@@ -1,4 +1,4 @@
-"""AI chat service — Gemini integration with deterministic fallback."""
+"""AI chat service — Groq / Gemini integration with deterministic fallback."""
 
 import random
 from typing import Tuple
@@ -56,8 +56,31 @@ Important guidelines:
 async def get_ai_reply(message: str) -> Tuple[str, str]:
     """
     Returns (reply_text, provider_name).
-    Tries Gemini first; falls back to canned replies.
+    Tries Groq first, then Gemini, then falls back to canned replies.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # 1) Try Groq
+    if settings.groq_api_key:
+        try:
+            from groq import AsyncGroq
+            client = AsyncGroq(api_key=settings.groq_api_key)
+            response = await client.chat.completions.create(
+                model=settings.groq_model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": message},
+                ],
+                temperature=0.7,
+                max_tokens=1024,
+            )
+            reply = response.choices[0].message.content.strip()
+            return reply, "groq"
+        except Exception as exc:
+            logger.warning(f"Groq error: {exc}")
+
+    # 2) Try Gemini
     if settings.gemini_api_key:
         try:
             import google.generativeai as genai
@@ -70,11 +93,9 @@ async def get_ai_reply(message: str) -> Tuple[str, str]:
             reply = response.text.strip()
             return reply, "gemini"
         except Exception as exc:
-            # Log and fall through to fallback
-            import logging
-            logging.getLogger(__name__).warning(f"Gemini error: {exc}")
+            logger.warning(f"Gemini error: {exc}")
 
-    # Fallback — deterministic based on message hash for consistency
+    # 3) Fallback — deterministic based on message hash for consistency
     idx = hash(message[:50]) % len(FALLBACK_REPLIES)
     reply = FALLBACK_REPLIES[idx]
     return reply, "fallback"
