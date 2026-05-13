@@ -69,7 +69,7 @@ async def get_ai_reply(message: str) -> Tuple[str, str]:
                 resp = await client.post(
                     "https://api.x.ai/v1/chat/completions",
                     headers={
-                        "Authorization": f"Bearer {settings.xai_api_key}",
+                        "Authorization": f"Bearer {settings.xai_api_key.strip()}",
                         "Content-Type": "application/json",
                     },
                     json={

@@ -223,7 +223,7 @@ async def test_ai():
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 "https://api.x.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {s.xai_api_key}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {s.xai_api_key.strip()}", "Content-Type": "application/json"},
                 json={"model": s.xai_model, "messages": [{"role": "user", "content": "say hi"}], "max_tokens": 10},
             )
             return {"status": resp.status_code, "model": s.xai_model, "body": resp.json()}
