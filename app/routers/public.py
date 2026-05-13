@@ -219,10 +219,9 @@ async def test_ai():
     if not s.gemini_api_key:
         return {"status": "error", "detail": "GEMINI_API_KEY not set"}
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=s.gemini_api_key.strip())
-        model = genai.GenerativeModel(model_name=s.gemini_model)
-        response = model.generate_content("say hi")
+        from google import genai
+        client = genai.Client(api_key=s.gemini_api_key.strip())
+        response = client.models.generate_content(model=s.gemini_model, contents="say hi")
         return {"status": 200, "model": s.gemini_model, "reply": response.text.strip()}
     except Exception as exc:
         return {"status": "error", "model": s.gemini_model, "detail": str(exc)}

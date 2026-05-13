@@ -64,13 +64,18 @@ async def get_ai_reply(message: str) -> Tuple[str, str]:
     # 1) Try Gemini
     if settings.gemini_api_key:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.gemini_api_key)
-            model = genai.GenerativeModel(
-                model_name=settings.gemini_model,
-                system_instruction=SYSTEM_PROMPT,
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=settings.gemini_api_key.strip())
+            response = client.models.generate_content(
+                model=settings.gemini_model,
+                contents=message,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.7,
+                    max_output_tokens=1024,
+                ),
             )
-            response = model.generate_content(message)
             reply = response.text.strip()
             return reply, "gemini"
         except Exception as exc:
