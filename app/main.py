@@ -19,7 +19,7 @@ from app.database import Base, engine
 from app.routers import (
     auth, public, appointments, patients,
     medical_records, ordonnances, lab_results, admin, health, uploads,
-    nursing_orders, doctor, ai,
+    nursing_orders, doctor, ai, medicines,
 )
 
 settings = get_settings()
@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(patients.router)
     app.include_router(medical_records.router)
     app.include_router(ordonnances.router)
+    app.include_router(medicines.router)
     app.include_router(lab_results.router)
     app.include_router(uploads.router)
     app.include_router(admin.router)

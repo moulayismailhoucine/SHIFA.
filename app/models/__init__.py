@@ -304,6 +304,19 @@ class MedicalRecord(Base):
 # Ordonnances (Prescriptions)
 # ─────────────────────────────────────────────────────────────────
 
+class Medicine(Base):
+    __tablename__ = "medicines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    generic_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # e.g. analgesic, antibiotic
+    form: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # tablet, capsule, syrup, injection
+    strength: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 500mg, 250mg/5ml
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class Ordonnance(Base):
     __tablename__ = "ordonnances"
 
