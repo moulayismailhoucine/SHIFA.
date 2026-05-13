@@ -535,6 +535,25 @@
     if (window.lucide) lucide.createIcons();
   });
 
+  // ── Print helper ─────────────────────────────────────────────────
+  async function printOrdonnance(id) {
+    const token = Auth.getToken();
+    if (!token) { showToast('Not authenticated', 'error'); return; }
+    try {
+      const res = await fetch('/api/ordonnances/' + id + '/print', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!res.ok) { showToast('Print failed: ' + res.status, 'error'); return; }
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (win) win.focus();
+    } catch (e) {
+      showToast('Print error: ' + e.message, 'error');
+    }
+  }
+
   // ── Auth helpers ──────────────────────────────────────────────────
   const Auth = {
     getToken: () => localStorage.getItem('medisys_token'),

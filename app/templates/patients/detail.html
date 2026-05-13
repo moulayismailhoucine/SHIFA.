@@ -688,7 +688,7 @@
           <td class="table-td" style="max-width:14rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.medications || '—'}</td>
           <td class="table-td"><span class="${statusColor[o.status]||''}">${o.status}</span></td>
           <td class="table-td">${o.is_taken ? '✅ ' + _t('Yes') : '⬜ ' + _t('No')}</td>
-          <td class="table-td"><a href="/api/ordonnances/${o.id}/print" target="_blank" class="text-xs" style="color:var(--accent);text-decoration:none">🖨</a></td>
+          <td class="table-td"><a href="#" onclick="printOrdonnance(${o.id}); return false;" class="text-xs" style="color:var(--accent);text-decoration:none">🖨</a></td>
         </tr>`).join('');
     }
 
