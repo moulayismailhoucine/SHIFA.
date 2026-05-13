@@ -209,29 +209,6 @@ def submit_contact(
 
 
 # ─────────────────────────────────────────────────────────────────
-# xAI connection test (temporary diagnostic)
-# ─────────────────────────────────────────────────────────────────
-
-@router.get("/test-ai")
-async def test_ai():
-    import httpx
-    from app.config import get_settings
-    s = get_settings()
-    if not s.xai_api_key:
-        return {"status": "error", "detail": "XAI_API_KEY not set"}
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                "https://api.x.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {s.xai_api_key.strip()}", "Content-Type": "application/json"},
-                json={"model": s.xai_model, "messages": [{"role": "user", "content": "say hi"}], "max_tokens": 10},
-            )
-            return {"status": resp.status_code, "model": s.xai_model, "body": resp.json()}
-    except Exception as exc:
-        return {"status": "exception", "detail": str(exc)}
-
-
-# ─────────────────────────────────────────────────────────────────
 # AI medical chat (public — audit logged)
 # ─────────────────────────────────────────────────────────────────
 

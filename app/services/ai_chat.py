@@ -1,4 +1,4 @@
-"""AI chat service — xAI (Grok) / Gemini integration with deterministic fallback."""
+"""AI chat service — Gemini integration with deterministic fallback."""
 
 import random
 from typing import Tuple
@@ -56,41 +56,12 @@ Important guidelines:
 async def get_ai_reply(message: str) -> Tuple[str, str]:
     """
     Returns (reply_text, provider_name).
-    Tries xAI (Grok) first, then Gemini, then falls back to canned replies.
+    Tries Gemini first, then falls back to canned replies.
     """
     import logging
     logger = logging.getLogger(__name__)
 
-    # 1) Try xAI (Grok)
-    if settings.xai_api_key:
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    "https://api.x.ai/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.xai_api_key.strip()}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": settings.xai_model,
-                        "messages": [
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": message},
-                        ],
-                        "temperature": 0.7,
-                        "max_tokens": 1024,
-                    },
-                )
-                if resp.status_code != 200:
-                    logger.error(f"xAI HTTP {resp.status_code} [{settings.xai_model}]: {resp.text}")
-                resp.raise_for_status()
-                reply = resp.json()["choices"][0]["message"]["content"].strip()
-                return reply, "xai"
-        except Exception as exc:
-            logger.error(f"xAI error [{settings.xai_model}]: {exc}")
-
-    # 2) Try Gemini
+    # 1) Try Gemini
     if settings.gemini_api_key:
         try:
             import google.generativeai as genai

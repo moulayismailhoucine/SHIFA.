@@ -441,7 +441,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     success: bool = True
     reply: str
-    provider: str  # "xai" | "gemini" | "fallback"
+    provider: str  # "gemini" | "fallback"
     disclaimer: str = (
         "This is an AI assistant. It does not provide medical diagnoses. "
         "Always consult a qualified healthcare professional."
