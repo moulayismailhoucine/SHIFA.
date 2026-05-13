@@ -312,6 +312,8 @@ class MedicationItem(BaseModel):
     dose: str
     frequency: str
     duration: str
+    method: Optional[str] = "oral"
+    note: Optional[str] = None
 
 
 class OrdonnanceCreate(BaseModel):
@@ -334,6 +336,7 @@ class OrdonnanceUpdate(BaseModel):
 
 class OrdonnanceOut(BaseModel):
     id: int
+    reference_number: Optional[str] = None
     patient_id: int
     doctor_id: int
     medications: Optional[Any]

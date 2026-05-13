@@ -164,6 +164,7 @@ class Doctor(Base):
     treatment_time: Mapped[int] = mapped_column(Integer, default=30)   # minutes
     clinic_address: Mapped[Optional[str]] = mapped_column(Text)
     avatar: Mapped[Optional[str]] = mapped_column(String(500))
+    logo_url: Mapped[Optional[str]] = mapped_column(String(500))
 
     user: Mapped["User"] = relationship("User", back_populates="doctor")
     appointments: Mapped[List["Appointment"]] = relationship("Appointment", back_populates="doctor")
@@ -321,6 +322,7 @@ class Ordonnance(Base):
     __tablename__ = "ordonnances"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    reference_number: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True)
     medical_record_id: Mapped[Optional[int]] = mapped_column(ForeignKey("medical_records.id", ondelete="SET NULL"), nullable=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"))
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id", ondelete="CASCADE"))

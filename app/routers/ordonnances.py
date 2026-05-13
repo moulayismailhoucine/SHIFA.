@@ -1,9 +1,11 @@
 """Ordonnances (prescriptions) router — CRUD, PDF, dispense, toggle."""
 
 from datetime import datetime
+import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from pathlib import Path
 
@@ -17,6 +19,45 @@ from app.services.storage import file_url
 
 router = APIRouter(prefix="/api/ordonnances", tags=["Ordonnances"])
 settings = get_settings()
+templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("/search")
+def search_by_reference(
+    ref: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin", "pharmacy")),
+):
+    if not ref:
+        raise HTTPException(status_code=400, detail="Reference number required")
+    o = db.query(Ordonnance).filter(Ordonnance.reference_number == ref.strip().upper()).first()
+    if not o:
+        raise HTTPException(status_code=404, detail="Ordonnance not found")
+    return {"success": True, "data": OrdonnanceOut.model_validate(o)}
+
+
+@router.get("/{ordonnance_id}/print", response_class=HTMLResponse)
+def print_ordonnance(
+    ordonnance_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin", "doctor", "pharmacy", "nurse")),
+):
+    o = db.query(Ordonnance).filter(Ordonnance.id == ordonnance_id).first()
+    if not o:
+        raise HTTPException(status_code=404, detail="Not found")
+    doctor = o.doctor
+    patient = o.patient
+    logo = doctor.logo_url if doctor and doctor.logo_url else "/static/img/default-logo.svg"
+    return templates.TemplateResponse("ordonnances/print.html", {
+        "request": request,
+        "ordonnance": o,
+        "doctor": doctor,
+        "patient": patient,
+        "logo_url": logo,
+        "medications": o.medications or [],
+        "now": datetime.utcnow(),
+    })
 
 
 @router.get("/")
@@ -73,7 +114,9 @@ def create_ordonnance(
         raise HTTPException(status_code=400, detail="A valid doctor_id is required")
 
     meds = [m.model_dump() for m in body.medications]
+    ref = f"ORD-{datetime.utcnow().strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
     o = Ordonnance(
+        reference_number=ref,
         medical_record_id=body.medical_record_id,
         patient_id=body.patient_id,
         doctor_id=doctor_id,

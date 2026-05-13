@@ -360,6 +360,13 @@
         <i data-lucide="microscope" class="w-4 h-4 flex-shrink-0"></i> {{ _("Lab Results") }}
       </a>
 
+      <div id="nav-pharmacy-section" class="hidden">
+        <p class="nav-section">{{ _("Pharmacy") }}</p>
+        <a href="/pharmacy" class="nav-link {% if request.url.path == '/pharmacy' %}active{% endif %}">
+          <i data-lucide="pill" class="w-4 h-4 flex-shrink-0"></i> {{ _("Dispense") }}
+        </a>
+      </div>
+
       <p class="nav-section">{{ _("Public") }}</p>
       <a href="/booking" id="nav-link-booking" class="nav-link {% if request.url.path == '/booking' %}active{% endif %}">
         <i data-lucide="calendar-plus" class="w-4 h-4 flex-shrink-0"></i> {{ _("Book Appointment") }}
@@ -572,6 +579,16 @@
         ordersNav.classList.remove('hidden');
       } else {
         ordersNav.classList.add('hidden');
+      }
+    }
+
+    // Show pharmacy nav section if pharmacy
+    const pharmacyNav = document.getElementById('nav-pharmacy-section');
+    if (pharmacyNav) {
+      if (user.role === 'pharmacy') {
+        pharmacyNav.classList.remove('hidden');
+      } else {
+        pharmacyNav.classList.add('hidden');
       }
     }
 

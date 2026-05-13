@@ -53,6 +53,11 @@ def dashboard(request: Request):
     return _render(request, "dashboard/index.html")
 
 
+@router.get("/pharmacy", response_class=HTMLResponse)
+def pharmacy_dashboard(request: Request):
+    return _render(request, "pharmacy/dashboard.html")
+
+
 @router.get("/patients", response_class=HTMLResponse)
 def patients_page(request: Request):
     return _render(request, "patients/index.html")

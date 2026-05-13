@@ -267,7 +267,14 @@
     role === 'admin' ? _t('Admin Dashboard') :
     role === 'nurse' ? _t('Nurse Dashboard') :
     role === 'laboratory' ? _t('Laboratory Dashboard') :
+    role === 'pharmacy' ? _t('Pharmacy Dashboard') :
     _t('Doctor Dashboard');
+
+  // Redirect pharmacy users to pharmacy dashboard
+  if (role === 'pharmacy') {
+    window.location.href = '/pharmacy';
+    return;
+  }
 
   // Hide system status for non-admin
   if (role !== 'admin') {
