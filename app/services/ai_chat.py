@@ -86,7 +86,7 @@ async def get_ai_reply(message: str) -> Tuple[str, str]:
                 reply = resp.json()["choices"][0]["message"]["content"].strip()
                 return reply, "xai"
         except Exception as exc:
-            logger.warning(f"xAI error: {exc}")
+            logger.error(f"xAI error [{settings.xai_model}]: {exc}")
 
     # 2) Try Gemini
     if settings.gemini_api_key:
