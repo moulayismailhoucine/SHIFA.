@@ -82,6 +82,8 @@ async def get_ai_reply(message: str) -> Tuple[str, str]:
                         "max_tokens": 1024,
                     },
                 )
+                if resp.status_code != 200:
+                    logger.error(f"xAI HTTP {resp.status_code} [{settings.xai_model}]: {resp.text}")
                 resp.raise_for_status()
                 reply = resp.json()["choices"][0]["message"]["content"].strip()
                 return reply, "xai"
