@@ -355,10 +355,10 @@
         <i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i> {{ _("Appointments") }}
       </a>
 
-      <div id="nav-lab-results-section">
-        <p class="nav-section">{{ _("Clinical") }}</p>
-        <a href="/lab-results" class="nav-link {% if request.url.path == '/lab-results' %}active{% endif %}">
-          <i data-lucide="microscope" class="w-4 h-4 flex-shrink-0"></i> {{ _("Lab Results") }}
+      <div id="nav-lab-section">
+        <p class="nav-section">{{ _("Lab") }}</p>
+        <a href="/lab" class="nav-link {% if request.url.path == '/lab' %}active{% endif %}">
+          <i data-lucide="flask-conical" class="w-4 h-4 flex-shrink-0"></i> {{ _("Lab Dashboard") }}
         </a>
       </div>
 
@@ -620,9 +620,9 @@
       if (apptLink) apptLink.style.display = 'none';
       if (bookLink) bookLink.style.display = 'none';
     }
-    // Hide Lab Results nav for doctor role
+    // Hide Lab nav for doctor role
     if (user.role === 'doctor') {
-      const labSection = document.getElementById('nav-lab-results-section');
+      const labSection = document.getElementById('nav-lab-section');
       if (labSection) labSection.style.display = 'none';
     }
   }

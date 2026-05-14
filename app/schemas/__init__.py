@@ -324,6 +324,7 @@ class OrdonnanceCreate(BaseModel):
     instructions: Optional[str] = None
     issued_date: date
     valid_until: Optional[date] = None
+    target: Optional[str] = "pharmacy"  # "pharmacy" or "lab"
 
 
 class OrdonnanceUpdate(BaseModel):
@@ -331,6 +332,7 @@ class OrdonnanceUpdate(BaseModel):
     instructions: Optional[str] = None
     valid_until: Optional[date] = None
     status: Optional[str] = None
+    target: Optional[str] = None
     is_taken: Optional[bool] = None
 
 
@@ -344,6 +346,7 @@ class OrdonnanceOut(BaseModel):
     issued_date: date
     valid_until: Optional[date]
     status: str
+    target: Optional[str] = "pharmacy"
     is_taken: bool
     pdf_path: Optional[str]
     dispensed_at: Optional[datetime]

@@ -88,6 +88,11 @@ def lab_results_page(request: Request):
     return _render(request, "lab_results/index.html")
 
 
+@router.get("/lab", response_class=HTMLResponse)
+def lab_dashboard(request: Request):
+    return _render(request, "lab/index.html")
+
+
 @router.get("/admin", response_class=HTMLResponse)
 def admin_page(request: Request):
     return _render(request, "admin/index.html")

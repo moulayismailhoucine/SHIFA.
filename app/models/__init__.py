@@ -331,6 +331,7 @@ class Ordonnance(Base):
     issued_date: Mapped[date] = mapped_column(Date)
     valid_until: Mapped[Optional[date]] = mapped_column(Date)
     status: Mapped[OrdonnanceStatus] = mapped_column(Enum(OrdonnanceStatus), default=OrdonnanceStatus.active)
+    target: Mapped[Optional[str]] = mapped_column(String(20), default="pharmacy")  # "pharmacy" or "lab"
     pdf_path: Mapped[Optional[str]] = mapped_column(String(500))
     is_taken: Mapped[bool] = mapped_column(Boolean, default=False)
     dispensed_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

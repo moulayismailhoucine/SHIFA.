@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Lab Dashboard') }}{% endblock %}
+{% block page_title %}{{ _('Lab Dashboard') }}{% endblock %}
+{% block page_subtitle %}{{ _('View prescriptions and upload results') }}{% endblock %}
+
+{% block content %}
+<!-- Patient ID Search -->
+<div class="card p-6 mb-6">
+  <div class="flex items-center gap-4">
+    <div class="flex-1 max-w-md">
+      <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Patient ID') }} *</label>
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+        <input id="patient-id-input" type="number" class="input pl-10" placeholder="{{ _('Enter patient ID…') }}" oninput="handlePatientSearch(this.value)" />
+      </div>
+    </div>
+    <div id="patient-info" class="hidden flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold flex-shrink-0" id="patient-initials">—</div>
+      <div>
+        <p class="font-medium text-sm" id="patient-name">—</p>
+        <p class="text-xs text-slate-500" id="patient-details">—</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ordonnances List -->
+<div id="ordonnances-section" class="hidden">
+  <div class="card overflow-hidden">
+    <div class="p-5" style="border-bottom:1px solid var(--border)">
+      <h3 class="font-semibold flex items-center gap-2">
+        <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-400"></i> {{ _('Lab Prescriptions') }}
+      </h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-700/50">
+            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Date') }}</th>
+            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Reference') }}</th>
+            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Tests') }}</th>
+            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Status') }}</th>
+            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Taken') }}</th>
+            <th class="text-right text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Actions') }}</th>
+          </tr>
+        </thead>
+        <tbody id="ord-tbody">
+          <tr><td colspan="6" class="text-center py-12 text-slate-500">{{ _('Loading…') }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Result Modal -->
+<div id="upload-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="glass rounded-2xl p-6 w-full max-w-md animate-slide-up">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-white">{{ _('Upload Lab Result') }}</h2>
+      <button onclick="closeUploadModal()" class="text-slate-500 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="upload-form" onsubmit="uploadResult(event)" class="space-y-4" enctype="multipart/form-data">
+      <input type="hidden" id="upload-ordonnance-id" />
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Title') }} *</label>
+        <input id="upload-title" name="title" class="input" placeholder="{{ _('e.g. Blood Test — CBC') }}" required />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Notes') }}</label>
+        <textarea id="upload-note" name="note" class="input h-20 resize-none" placeholder="{{ _('Optional notes…') }}"></textarea>
+      </div>
+      <div id="category-box" style="display:none">
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Category') }}</label>
+        <select id="upload-category" name="category" class="input">
+          <option value="">— {{ _('Select') }} —</option>
+          <option value="xray">{{ _('X-Ray') }}</option>
+          <option value="mri">{{ _('MRI') }}</option>
+          <option value="ct_scan">{{ _('CT Scan') }}</option>
+          <option value="ultrasound">{{ _('Ultrasound') }}</option>
+          <option value="blood_test">{{ _('Blood Test') }}</option>
+          <option value="other">{{ _('Other') }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('File') }} *</label>
+        <input id="upload-file" name="file" type="file" class="input pt-1.5" accept=".pdf,.jpg,.jpeg,.png,.tiff" required onchange="handleFileChange(this)" />
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="closeUploadModal()" class="btn-secondary flex-1">{{ _('Cancel') }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center">
+          <i data-lucide="upload" class="w-4 h-4"></i> {{ _('Upload') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let currentPatientId = null;
+  let currentPatient = null;
+
+  window._T = {
+    "Patient not found": "{{ _('Patient not found') }}",
+    "No lab prescriptions found": "{{ _('No lab prescriptions found') }}",
+    "Error loading": "{{ _('Error loading') }}",
+    "Marked as taken": "{{ _('Marked as taken') }}",
+    "Lab result uploaded!": "{{ _('Lab result uploaded!') }}",
+    "Upload failed": "{{ _('Upload failed') }}",
+  };
+  function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
+
+  async function handlePatientSearch(patientId) {
+    if (!patientId || patientId.length < 1) {
+      document.getElementById('ordonnances-section').classList.add('hidden');
+      document.getElementById('patient-info').classList.add('hidden');
+      return;
+    }
+    const id = parseInt(patientId);
+    if (isNaN(id)) return;
+
+    const token = Auth.getToken();
+    const res = await fetch(`/api/patients/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+    
+    if (!res?.success) {
+      document.getElementById('ordonnances-section').classList.add('hidden');
+      document.getElementById('patient-info').classList.add('hidden');
+      return;
+    }
+
+    currentPatientId = id;
+    currentPatient = res.data;
+    
+    // Show patient info
+    const initials = (res.data.name || '').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('patient-initials').textContent = initials;
+    document.getElementById('patient-name').textContent = res.data.name || '—';
+    document.getElementById('patient-details').textContent = `ID: ${res.data.id}${res.data.age ? ' · Age: ' + res.data.age : ''}${res.data.gender ? ' · ' + res.data.gender : ''}`;
+    document.getElementById('patient-info').classList.remove('hidden');
+    
+    // Load ordonnances
+    loadOrdonnances(id);
+  }
+
+  async function loadOrdonnances(patientId) {
+    const token = Auth.getToken();
+    const res = await fetch(`/api/ordonnances/?patient_id=${patientId}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+    const tbody = document.getElementById('ord-tbody');
+    
+    if (!res?.success) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">${_t('Error loading')}</td></tr>`;
+      return;
+    }
+
+    // Filter for lab target only
+    const labOrds = res.data.filter(o => o.target === 'lab');
+    
+    if (!labOrds.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">${_t('No lab prescriptions found')}</td></tr>`;
+      document.getElementById('ordonnances-section').classList.add('hidden');
+      return;
+    }
+
+    document.getElementById('ordonnances-section').classList.remove('hidden');
+
+    const colors = { active: 'bg-green-600/20 text-green-400', dispensed: 'bg-blue-600/20 text-blue-400', expired: 'bg-slate-600/20 text-slate-400' };
+    tbody.innerHTML = labOrds.map(o => `
+      <tr class="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+        <td class="px-6 py-4 text-sm text-white">${o.issued_date}</td>
+        <td class="px-4 py-4 text-sm text-slate-300 font-mono">${o.reference_number || '—'}</td>
+        <td class="px-4 py-4 text-sm text-slate-400">${Array.isArray(o.medications) ? o.medications.map(m => m.name).join(', ') : '—'}</td>
+        <td class="px-4 py-4"><span class="badge ${colors[o.status] || ''}">${o.status}</span></td>
+        <td class="px-4 py-4">
+          <button onclick="toggleTaken(${o.id}, ${o.is_taken})" class="${o.is_taken ? 'text-green-400' : 'text-slate-500'} hover:text-green-300 transition-colors">
+            <i data-lucide="${o.is_taken ? 'check-circle' : 'circle'}" class="w-5 h-5"></i>
+          </button>
+        </td>
+        <td class="px-6 py-4 text-right">
+          <button onclick="openUploadModal(${o.id})" class="btn-primary text-xs py-1">{{ _('Upload Result') }}</button>
+        </td>
+      </tr>
+    `).join('');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  async function toggleTaken(ordonnanceId, currentStatus) {
+    const token = Auth.getToken();
+    const res = await fetch(`/api/ordonnances/${ordonnanceId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ is_taken: !currentStatus }),
+    }).then(r => r.json()).catch(() => null);
+    
+    if (res?.success) {
+      showToast(_t('Marked as taken'));
+      loadOrdonnances(currentPatientId);
+    } else {
+      showToast(res?.detail || 'Error', 'error');
+    }
+  }
+
+  function openUploadModal(ordonnanceId) {
+    document.getElementById('upload-ordonnance-id').value = ordonnanceId;
+    document.getElementById('upload-title').value = '';
+    document.getElementById('upload-note').value = '';
+    document.getElementById('upload-category').value = '';
+    document.getElementById('upload-file').value = '';
+    document.getElementById('category-box').style.display = 'none';
+    document.getElementById('upload-modal').classList.remove('hidden');
+  }
+
+  function closeUploadModal() {
+    document.getElementById('upload-modal').classList.add('hidden');
+  }
+
+  function handleFileChange(input) {
+    const file = input.files[0];
+    const box = document.getElementById('category-box');
+    if (file && file.type.startsWith('image/')) {
+      box.style.display = 'block';
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
+  async function uploadResult(e) {
+    e.preventDefault();
+    const token = Auth.getToken();
+    const formData = new FormData(e.target);
+    formData.append('patient_id', currentPatientId);
+    
+    const res = await fetch('/api/lab-results/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(r => r.json()).catch(() => null);
+    
+    if (res?.success) {
+      closeUploadModal();
+      e.target.reset();
+      showToast(_t('Lab result uploaded!'));
+    } else {
+      showToast(res?.detail || _t('Upload failed'), 'error');
+    }
+  }
+</script>
+{% endblock %}
