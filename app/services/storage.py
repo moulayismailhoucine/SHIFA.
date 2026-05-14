@@ -87,5 +87,9 @@ async def save_patient_photo(file: UploadFile) -> Tuple[str, str]:
     return await save_file(file, "patients", ALLOWED_IMAGE_TYPES)
 
 
+async def save_doctor_photo(file: UploadFile) -> Tuple[str, str]:
+    return await save_file(file, "doctors", ALLOWED_IMAGE_TYPES)
+
+
 async def save_lab_result_file(file: UploadFile) -> Tuple[str, str]:
     return await save_file(file, "lab_results", ALLOWED_LAB_TYPES)

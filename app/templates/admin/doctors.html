@@ -78,6 +78,15 @@
     </div>
     <form id="form-create" onsubmit="createDoctor(event)" class="p-6 space-y-4">
       <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">{{ _('Account') }}</p>
+      <div class="flex items-center gap-4 mb-2">
+        <div id="create-avatar-preview" class="w-16 h-16 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xl flex-shrink-0 overflow-hidden">
+          <i data-lucide="user" class="w-7 h-7"></i>
+        </div>
+        <div class="flex-1">
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Photo / Logo') }}</label>
+          <input id="create-photo-input" type="file" accept="image/jpeg,image/png,image/webp" class="input pt-1.5 text-sm" onchange="previewAvatar(this,'create-avatar-preview')" />
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Full Name') }} *</label>
@@ -185,6 +194,15 @@
     </div>
     <form id="form-edit" onsubmit="saveDoctor(event)" class="p-6 space-y-4">
       <input type="hidden" id="edit-doctor-id" />
+      <div class="flex items-center gap-4 mb-2">
+        <div id="edit-avatar-preview" class="w-16 h-16 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xl flex-shrink-0 overflow-hidden">
+          <i data-lucide="user" class="w-7 h-7"></i>
+        </div>
+        <div class="flex-1">
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Photo / Logo') }}</label>
+          <input id="edit-photo-input" type="file" accept="image/jpeg,image/png,image/webp" class="input pt-1.5 text-sm" onchange="previewAvatar(this,'edit-avatar-preview')" />
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Specialty') }}</label>
@@ -375,6 +393,9 @@
 
     const rows = list.map(d => {
       const initials = d.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const avatarHtml = d.avatar_url
+        ? `<img src="${d.avatar_url}" class="w-9 h-9 rounded-xl object-cover flex-shrink-0" />`
+        : `<div class="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center text-xs font-bold text-blue-400 flex-shrink-0">${initials}</div>`;
       const activeBadge = d.is_active
         ? `<span class="badge bg-green-600/20 text-green-400">${_t('Active')}</span>`
         : `<span class="badge bg-slate-700/50 text-slate-400">${_t('Inactive')}</span>`;
@@ -385,7 +406,7 @@
         <tr class="table-row-hover border-t" style="border-color:var(--border)" data-id="${d.id}">
           <td class="px-5 py-3">
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-blue-600/20 flex items-center justify-center text-xs font-bold text-blue-400 flex-shrink-0">${initials}</div>
+              ${avatarHtml}
               <div>
                 <p class="font-medium text-sm">${d.name}</p>
                 <p class="text-xs" style="color:var(--text-muted)">${d.email}</p>
@@ -444,10 +465,22 @@
     renderTable(filtered);
   }
 
+  // ── Avatar preview ───────────────────────────────────────────────────
+  function previewAvatar(input, previewId) {
+    const preview = document.getElementById(previewId);
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover" />`;
+    };
+    reader.readAsDataURL(file);
+  }
+
   // ── Create ────────────────────────────────────────────────────────────
   function openCreateModal() {
     document.getElementById('form-create').reset();
-    // Reset day picker to default Mon-Fri
+    document.getElementById('create-avatar-preview').innerHTML = '<i data-lucide="user" class="w-7 h-7"></i>';
     setSelectedDays('create', 'Mon,Tue,Wed,Thu,Fri');
     openModal('modal-create');
   }
@@ -513,6 +546,18 @@
         headers: jsonHeaders(),
         body: JSON.stringify(profilePayload),
       }).catch(() => {});
+
+      // Upload photo if selected
+      const photoInput = document.getElementById('create-photo-input');
+      if (photoInput.files[0]) {
+        const photoFd = new FormData();
+        photoFd.append('file', photoInput.files[0]);
+        await fetch(`/api/admin/doctors/${newDoctor.id}/photo`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token()}` },
+          body: photoFd,
+        }).catch(() => {});
+      }
     }
 
     closeModal('modal-create');
@@ -527,6 +572,13 @@
     const d = allDoctors.find(x => x.id === doctorId);
     if (!d) return;
     document.getElementById('edit-doctor-id').value              = d.id;
+    const editPreview = document.getElementById('edit-avatar-preview');
+    if (d.avatar_url) {
+      editPreview.innerHTML = `<img src="${d.avatar_url}" style="width:100%;height:100%;object-fit:cover" />`;
+    } else {
+      editPreview.innerHTML = '<i data-lucide="user" class="w-7 h-7"></i>';
+    }
+    document.getElementById('edit-photo-input').value = '';
     document.getElementById('edit-specialty').value              = d.specialty || '';
     document.getElementById('edit-license_number').value         = d.license_number || '';
     document.getElementById('edit-phone').value                  = d.phone || '';
@@ -562,6 +614,17 @@
       });
       const res = await r.json();
       if (r.ok && res.success) {
+        // Upload new photo if selected
+        const photoInput = document.getElementById('edit-photo-input');
+        if (photoInput.files[0]) {
+          const photoFd = new FormData();
+          photoFd.append('file', photoInput.files[0]);
+          await fetch(`/api/admin/doctors/${id}/photo`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token()}` },
+            body: photoFd,
+          }).catch(() => {});
+        }
         closeModal('modal-edit');
         showToast(_t('Doctor updated!'));
         loadDoctors();

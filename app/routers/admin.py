@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 import bcrypt as _bcrypt
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
@@ -11,6 +11,7 @@ from app.database import get_db
 from app.dependencies import require_admin
 from app.models import User, ContactMessage, FraudAttempt, Alert, Doctor, Pharmacy, Laboratory, Nurse, RoleEnum
 from app.schemas import UserCreate, UserUpdate, UserOut
+from app.services.storage import save_doctor_photo, file_url, delete_file
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 def _hash_password(plain: str) -> str:
@@ -305,6 +306,7 @@ def list_doctors(
                     "break_end": d.break_end,
                     "treatment_time": d.treatment_time,
                     "clinic_address": d.clinic_address,
+                    "avatar_url": file_url(d.avatar) if d.avatar else None,
                 }
                 for d in doctors
             ],
@@ -349,6 +351,24 @@ def update_doctor_profile(
         setattr(d, k, v)
     db.commit()
     return {"success": True, "message": "Doctor profile updated"}
+
+
+@router.post("/doctors/{doctor_id}/photo")
+async def upload_doctor_photo(
+    doctor_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    d = db.query(Doctor).filter(Doctor.id == doctor_id).first()
+    if not d:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+    if d.avatar:
+        delete_file(d.avatar)
+    relative, _ = await save_doctor_photo(file)
+    d.avatar = relative
+    db.commit()
+    return {"success": True, "avatar_url": file_url(relative)}
 
 
 @router.patch("/doctors/{doctor_id}/toggle-active")
