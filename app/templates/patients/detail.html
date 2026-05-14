@@ -616,7 +616,9 @@
     vitalsData = vitals_trend || [];
 
     // Hide non-lab elements for laboratory users
-    const userRole = 'doctor';
+    const _tok = Auth.getToken();
+    const _payload = _tok ? JSON.parse(atob(_tok.split('.')[1])) : {};
+    const userRole = _payload.role || 'doctor';
     if (userRole === 'laboratory') {
       document.getElementById('edit-btn-wrap').style.display = 'none';
       document.getElementById('vitals-chart-card').style.display = 'none';
@@ -719,6 +721,12 @@
     }
 
     function renderAiCard(lr) {
+      const isAbnormal = lr.ai_diagnosis && (lr.ai_diagnosis.toLowerCase().includes('fracture') || lr.ai_diagnosis.toLowerCase().includes('abnormal'));
+      const isNormal = lr.ai_diagnosis && lr.ai_diagnosis.toLowerCase().includes('normal');
+      const color  = isAbnormal ? '#f87171' : isNormal ? '#34d399' : '#fbbf24';
+      const border = isAbnormal ? 'rgba(248,113,113,.3)' : isNormal ? 'rgba(52,211,153,.3)' : 'rgba(251,191,36,.3)';
+      const bg     = isAbnormal ? 'rgba(248,113,113,.07)' : isNormal ? 'rgba(52,211,153,.07)' : 'rgba(251,191,36,.07)';
+      const icon   = isAbnormal ? 'alert-triangle' : isNormal ? 'check-circle' : 'info';
       return `
       <div style="margin-top:.5rem;margin-left:0;padding:.875rem 1rem;border-radius:.75rem;border:1px solid ${border};background:${bg}">
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.375rem">
@@ -830,7 +838,9 @@
       const map = { routine:'bg-slate-500/15 text-slate-400', urgent:'bg-orange-500/15 text-orange-500', stat:'bg-red-500/15 text-red-500' };
       return `<span class="badge ${map[p]||'bg-gray-500/15 text-gray-500'}">${p}</span>`;
     };
-    const userRole = 'doctor';
+    const _tok2 = Auth.getToken();
+    const _payload2 = _tok2 ? JSON.parse(atob(_tok2.split('.')[1])) : {};
+    const userRole = _payload2.role || 'doctor';
     const isNurse = userRole === 'nurse';
     el.innerHTML = orders.map(o => {
       let actionBtns = '';
