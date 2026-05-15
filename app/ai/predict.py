@@ -41,7 +41,11 @@ def _load_model():
         from tensorflow import keras
         if not MODEL_PATH.exists():
             return None
-        _model = keras.models.load_model(str(MODEL_PATH))
+        class CustomDense(keras.layers.Dense):
+            def __init__(self, **kwargs):
+                kwargs.pop('quantization_config', None)
+                super().__init__(**kwargs)
+        _model = keras.models.load_model(str(MODEL_PATH), custom_objects={'Dense': CustomDense})
         logger.info(f"Loaded model from {MODEL_PATH}")
         return _model
     except Exception as e:
@@ -70,8 +74,17 @@ def _analyze_in_process(image_path: str) -> Optional[Dict]:
         return None
     try:
         x = _preprocess(image_path)
-        probs = model.predict(x, verbose=0)[0]
-        idx = int(probs.argmax())
+        raw_probs = model.predict(x, verbose=0)[0]
+        
+        if len(raw_probs) == 1:
+            prob_abnormal = float(raw_probs[0])
+            prob_normal = 1.0 - prob_abnormal
+            probs = [prob_normal, prob_abnormal]
+        else:
+            probs = [float(p) for p in raw_probs]
+            
+        import numpy as np
+        idx = int(np.argmax(probs))
         confidence = float(probs[idx]) * 100
         labels = ["Normal", "Fracture"]
         diagnosis = labels[idx] if idx < len(labels) else "Unknown"
@@ -151,3 +164,27 @@ def analyze_xray(image_path: str) -> Optional[Dict]:
     # 2. Fallback to subprocess (local Windows dev without TF in venv)
     logger.info("Falling back to subprocess inference")
     return _analyze_subprocess(image_path)
+
+
+def analyze_skin_cancer(image_path: str) -> Optional[Dict]:
+    """
+    Analyze a skin lesion image for cancer.
+    Placeholder/stub implementation until a dedicated model is trained.
+    """
+    import random
+    
+    # Generate mock prediction for now
+    is_malignant = random.random() > 0.7
+    diagnosis = "Malignant" if is_malignant else "Benign"
+    confidence = round(random.uniform(75.0, 98.5), 1)
+    
+    return {
+        "diagnosis": diagnosis,
+        "probability": confidence,
+        "body_part": "Skin",
+        "note": "AI preliminary analysis (MOCK). Please confirm with dermatologist.",
+        "class_probabilities": {
+            "Malignant": confidence if is_malignant else round(100 - confidence, 1),
+            "Benign": round(100 - confidence, 1) if is_malignant else confidence
+        }
+    }

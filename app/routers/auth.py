@@ -13,6 +13,12 @@ from app.dependencies import get_current_user, bearer
 from app.models import User, Patient, AuthToken, Doctor, Pharmacy, Laboratory
 from app.schemas import StaffLoginRequest, NfcLoginRequest, TokenResponse
 
+from pydantic import BaseModel
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
 router = APIRouter(prefix="/api", tags=["Auth"])
 settings = get_settings()
 def _verify_password(plain: str, hashed: str) -> bool:
@@ -107,6 +113,20 @@ def nfc_login(body: NfcLoginRequest, db: Session = Depends(get_db)):
     }
     return TokenResponse(token=token, patient=profile)
 
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not _verify_password(body.old_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+    
+    new_hash = _bcrypt.hashpw(body.new_password.encode(), _bcrypt.gensalt()).decode()
+    current_user.password_hash = new_hash
+    db.commit()
+    return {"success": True, "message": "Password changed successfully"}
 
 @router.post("/logout")
 def logout(

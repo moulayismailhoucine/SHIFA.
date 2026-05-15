@@ -70,6 +70,7 @@
           <option value="mri">{{ _('MRI') }}</option>
           <option value="ct_scan">{{ _('CT Scan') }}</option>
           <option value="ultrasound">{{ _('Ultrasound') }}</option>
+          <option value="skin_cancer">{{ _('Skin Cancer Image') }}</option>
           <option value="other">{{ _('Other') }}</option>
         </select>
       </div>
@@ -107,7 +108,13 @@
     const tbody = document.getElementById('lab-tbody');
     if (!res?.success) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-slate-500">${_t('Error loading')}</td></tr>`; return; }
     if (!res.data.length) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 text-slate-500">${_t('No lab results yet')}</td></tr>`; return; }
-    const catLabel = { xray: 'X-Ray', mri: 'MRI', ct_scan: 'CT Scan', ultrasound: 'Ultrasound', blood_test: 'Blood Test', other: 'Other' };
+    const catLabel = { xray: 'X-Ray', mri: 'MRI', ct_scan: 'CT Scan', ultrasound: 'Ultrasound', skin_cancer: 'Skin Cancer', blood_test: 'Blood Test', other: 'Other' };
+    
+    function getAiColor(prob) {
+      const hue = Math.max(0, Math.min(120, (100 - prob) * 1.2)).toFixed(0);
+      return `hsl(${hue}, 85%, 55%)`;
+    }
+
     tbody.innerHTML = res.data.map(r => `
       <tr class="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
         <td class="px-6 py-4 text-sm font-medium text-white">${r.title}</td>
@@ -121,6 +128,7 @@
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
           </div>
+          ${r.ai_diagnosis ? `<div class="mt-2 text-xs font-semibold text-right" style="color:${getAiColor(r.ai_probability)}"><i data-lucide="sparkles" class="w-3 h-3 inline-block"></i> AI: ${r.ai_diagnosis} <span class="opacity-80 font-normal">(${r.ai_probability}%)</span></div>` : ''}
         </td>
       </tr>
     `).join('');

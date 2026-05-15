@@ -72,7 +72,12 @@ def _run_ai_analysis(result_id: int):
             if not image_path.exists():
                 return
 
-            ai_result = analyze_xray(str(image_path))
+            if result.category == "skin_cancer":
+                from app.ai.predict import analyze_skin_cancer
+                ai_result = analyze_skin_cancer(str(image_path))
+            else:
+                ai_result = analyze_xray(str(image_path))
+
             if ai_result:
                 result.ai_diagnosis = ai_result.get("diagnosis", "Error")
                 result.ai_probability = ai_result.get("probability", 0)
@@ -124,8 +129,8 @@ async def upload_lab_result(
     db.commit()
     db.refresh(result)
 
-    # Trigger AI analysis for X-ray / CT scan images
-    if category in ("xray", "ct_scan") and background_tasks:
+    # Trigger AI analysis for X-ray / CT scan / Skin images
+    if category in ("xray", "ct_scan", "skin_cancer") and background_tasks:
         background_tasks.add_task(_run_ai_analysis, result.id)
 
     return {

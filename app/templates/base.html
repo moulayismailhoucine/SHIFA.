@@ -81,12 +81,16 @@
 
     /* ── Glass ────────────────────────────────────────────────────── */
     .glass {
-      background: var(--bg-card);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
     .dark .glass {
-      background: rgba(30,41,59,0.75);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
     /* ── Gradient text ────────────────────────────────────────────── */
@@ -126,74 +130,89 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: #2563eb;
+      padding: 0.625rem 1.25rem;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: #fff;
       font-size: 0.875rem;
       font-weight: 600;
       border-radius: 0.75rem;
-      transition: all 0.2s;
-      box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 14px rgba(37,99,235,0.3);
       border: none;
       cursor: pointer;
       text-decoration: none;
     }
-    .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
 
     .btn-secondary {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: var(--bg-card);
+      padding: 0.625rem 1.25rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
       color: var(--text);
       font-size: 0.875rem;
       font-weight: 600;
       border-radius: 0.75rem;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       border: 1px solid var(--border);
       cursor: pointer;
       text-decoration: none;
     }
-    .btn-secondary:hover { border-color: #3b82f6; color: #3b82f6; }
+    .btn-secondary:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.05); transform: translateY(-1px); }
 
     .btn-danger {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.5rem 1rem;
+      padding: 0.625rem 1.25rem;
       background: rgba(220,38,38,0.1);
       color: #ef4444;
       font-size: 0.875rem;
       font-weight: 600;
       border-radius: 0.75rem;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       border: 1px solid rgba(239,68,68,0.3);
       cursor: pointer;
     }
-    .btn-danger:hover { background: rgba(220,38,38,0.2); }
+    .btn-danger:hover { background: rgba(220,38,38,0.2); transform: translateY(-1px); }
 
     /* ── Card ─────────────────────────────────────────────────────── */
     .card {
       background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 1.25rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .dark .card {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .card:hover {
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
     }
 
     /* ── Input ────────────────────────────────────────────────────── */
     .input {
       width: 100%;
-      padding: 0.625rem 1rem;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
+      padding: 0.75rem 1.25rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 0.75rem;
       color: var(--text);
       font-size: 0.875rem;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
       outline: none;
     }
+    .dark .input { background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.08); }
     .input::placeholder { color: var(--text-muted); }
-    .input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.15); background: rgba(0, 0, 0, 0.3); }
 
     /* ── Badge ────────────────────────────────────────────────────── */
     .badge {
@@ -273,6 +292,11 @@
     }
     #theme-toggle:hover { color: var(--text); border-color: #3b82f6; }
 
+    /* Role-based overrides */
+    .role-laboratory #sidebar { display: none !important; }
+    .lab-only-topbar { display: none !important; }
+    .role-laboratory .lab-only-topbar { display: flex !important; }
+
     /* Section headings in sidebar */
     .nav-section {
       font-size: 0.845rem;
@@ -319,6 +343,16 @@
     const t = localStorage.getItem('medisys_theme') || 'dark';
     if (t === 'light') document.documentElement.classList.remove('dark');
     else document.documentElement.classList.add('dark');
+    
+    const u = localStorage.getItem('medisys_user');
+    if (u) {
+      try {
+        const user = JSON.parse(u);
+        if (user.role === 'laboratory') {
+          document.documentElement.classList.add('role-laboratory');
+        }
+      } catch(e) {}
+    }
   })();
 </script>
 
@@ -369,11 +403,11 @@
         </a>
       </div>
 
-      <p class="nav-section">{{ _("Public") }}</p>
+      <p class="nav-section" id="nav-public-section">{{ _("Public") }}</p>
       <a href="/booking" id="nav-link-booking" class="nav-link {% if request.url.path == '/booking' %}active{% endif %}">
         <i data-lucide="calendar-plus" class="w-4 h-4 flex-shrink-0"></i> {{ _("Book Appointment") }}
       </a>
-      <a href="/chat" class="nav-link {% if request.url.path == '/chat' %}active{% endif %}">
+      <a href="/chat" id="nav-link-chat" class="nav-link {% if request.url.path == '/chat' %}active{% endif %}">
         <i data-lucide="message-circle" class="w-4 h-4 flex-shrink-0"></i> {{ _("AI Medical Chat") }}
       </a>
 
@@ -430,9 +464,21 @@
   <main class="flex-1 flex flex-col overflow-hidden" style="background:var(--bg)">
     <!-- Top bar -->
     <header id="topbar" class="h-16 flex items-center justify-between px-6 flex-shrink-0 transition-colors duration-300">
-      <div>
-        <h2 class="font-semibold text-base" id="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
-        <p class="text-xs" id="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+      <div class="flex items-center gap-4">
+        <div>
+          <h2 class="font-semibold text-base" id="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+          <p class="text-xs" id="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+        </div>
+        
+        <!-- Topbar Public Links (visible for lab users) -->
+        <div class="lab-only-topbar md:flex items-center gap-2 ml-4">
+          <a href="/booking" class="text-sm font-medium text-slate-500 hover:text-blue-500 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <i data-lucide="calendar-plus" class="w-4 h-4"></i> {{ _("Book Appointment") }}
+          </a>
+          <a href="/chat" class="text-sm font-medium text-slate-500 hover:text-blue-500 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <i data-lucide="message-circle" class="w-4 h-4"></i> {{ _("AI Medical Chat") }}
+          </a>
+        </div>
       </div>
       <div class="flex items-center gap-3">
         <!-- Language selector -->
@@ -460,6 +506,9 @@
         <button class="relative transition-colors" id="alert-bell">
           <i data-lucide="bell" class="w-5 h-5"></i>
           <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+        </button>
+        <button onclick="logout()" class="lab-only-topbar text-slate-400 hover:text-red-500 transition-colors ml-2" title="{{ _("Logout") }}">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
         </button>
         {% block header_actions %}{% endblock %}
       </div>
@@ -613,15 +662,19 @@
       }
     }
 
-    // Hide appointments/booking nav for laboratory users
+    // Hide appointments/booking/public nav for laboratory users
     if (user.role === 'laboratory') {
       const apptLink = document.getElementById('nav-link-appointments');
       const bookLink = document.getElementById('nav-link-booking');
+      const chatLink = document.getElementById('nav-link-chat');
+      const publicSec = document.getElementById('nav-public-section');
       if (apptLink) apptLink.style.display = 'none';
       if (bookLink) bookLink.style.display = 'none';
+      if (chatLink) chatLink.style.display = 'none';
+      if (publicSec) publicSec.style.display = 'none';
     }
-    // Hide Lab nav for doctor role
-    if (user.role === 'doctor') {
+    // Hide Lab nav for doctor and nurse roles
+    if (user.role === 'doctor' || user.role === 'nurse') {
       const labSection = document.getElementById('nav-lab-section');
       if (labSection) labSection.style.display = 'none';
     }
@@ -648,13 +701,33 @@
     setTimeout(() => toast.remove(), 4000);
   }
 
-  // HTMX auth headers
+  // Global error handling for fetch (handle 401 token expiration)
+  const originalFetch = window.fetch;
+  window.fetch = async function() {
+    try {
+      const response = await originalFetch.apply(this, arguments);
+      if (response.status === 401 && !window.location.pathname.startsWith('/login')) {
+        Auth.clear();
+        window.location.href = '/login';
+      }
+      return response;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  // HTMX error handling
   document.addEventListener('htmx:configRequest', (e) => {
     const token = Auth.getToken();
     if (token) e.detail.headers['Authorization'] = `Bearer ${token}`;
   });
   document.addEventListener('htmx:responseError', (e) => {
-    showToast(`{{ _('Request failed') }}: ${e.detail.xhr.status}`, 'error');
+    if (e.detail.xhr.status === 401) {
+      Auth.clear();
+      window.location.href = '/login';
+    } else {
+      showToast(`{{ _('Request failed') }}: ${e.detail.xhr.status}`, 'error');
+    }
   });
 
   // ── JS Translation helper ─────────────────────────────────────────

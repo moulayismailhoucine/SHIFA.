@@ -53,7 +53,7 @@
 {% endblock %}
 
 {% block header_actions %}
-<a href="/patients" class="btn-secondary">
+<a href="/patients" id="back-btn" class="btn-secondary">
   <i data-lucide="arrow-left" class="w-4 h-4"></i> {{ _('Back') }}
 </a>
 {% endblock %}
@@ -621,14 +621,13 @@
     const userRole = _payload.role || 'doctor';
     if (userRole === 'laboratory') {
       document.getElementById('edit-btn-wrap').style.display = 'none';
-      document.getElementById('vitals-chart-card').style.display = 'none';
-      document.getElementById('tab-btn-records').style.display = 'none';
-      document.getElementById('tab-btn-ordo').style.display = 'none';
-      document.getElementById('tab-btn-recs').style.display = 'none';
-      document.getElementById('tab-btn-nursing').style.display = 'none';
-      // Auto-switch to Lab Results tab
-      const labsBtn = document.getElementById('tab-btn-labs');
-      if (labsBtn) labsBtn.click();
+      const nursingTab = document.getElementById('tab-btn-nursing');
+      if (nursingTab) nursingTab.style.display = 'none';
+      const backBtn = document.getElementById('back-btn');
+      if (backBtn) {
+        backBtn.href = '/lab';
+        backBtn.innerHTML = '<i data-lucide="home" class="w-4 h-4"></i> ' + _t('Home');
+      }
     } else {
       document.getElementById('add-lab-result-btn').style.display = 'none';
     }
@@ -721,23 +720,43 @@
     }
 
     function renderAiCard(lr) {
-      const isAbnormal = lr.ai_diagnosis && (lr.ai_diagnosis.toLowerCase().includes('fracture') || lr.ai_diagnosis.toLowerCase().includes('abnormal'));
-      const isNormal = lr.ai_diagnosis && lr.ai_diagnosis.toLowerCase().includes('normal');
-      const color  = isAbnormal ? '#f87171' : isNormal ? '#34d399' : '#fbbf24';
-      const border = isAbnormal ? 'rgba(248,113,113,.3)' : isNormal ? 'rgba(52,211,153,.3)' : 'rgba(251,191,36,.3)';
-      const bg     = isAbnormal ? 'rgba(248,113,113,.07)' : isNormal ? 'rgba(52,211,153,.07)' : 'rgba(251,191,36,.07)';
-      const icon   = isAbnormal ? 'alert-triangle' : isNormal ? 'check-circle' : 'info';
+      // Determine if the diagnosis is a "safe/normal" outcome
+      const diagLower = (lr.ai_diagnosis || '').toLowerCase();
+      const isNormal = /normal|no fracture|healthy|negative|no abnormality|no finding/i.test(diagLower);
+
+      // For NORMAL: high probability = green (safe). For ABNORMAL: high probability = red (danger).
+      const hue = isNormal
+        ? Math.max(0, Math.min(120, lr.ai_probability * 1.2)).toFixed(0)      // high prob → green
+        : Math.max(0, Math.min(120, (100 - lr.ai_probability) * 1.2)).toFixed(0); // high prob → red
+
+      const color  = `hsl(${hue}, 85%, 45%)`;
+      const border = `hsla(${hue}, 85%, 45%, 0.3)`;
+      const bg     = `hsla(${hue}, 85%, 45%, 0.08)`;
+
+      // Icon: safe result → check, risky → alert, uncertain → info
+      let icon, riskLabel;
+      if (isNormal && lr.ai_probability >= 60) {
+        icon = 'check-circle'; riskLabel = _t('Normal') || 'Normal';
+      } else if (!isNormal && lr.ai_probability >= 60) {
+        icon = 'alert-triangle'; riskLabel = _t('High Risk') || 'High Risk';
+      } else {
+        icon = 'info'; riskLabel = _t('Uncertain') || 'Uncertain';
+      }
+
       return `
       <div style="margin-top:.5rem;margin-left:0;padding:.875rem 1rem;border-radius:.75rem;border:1px solid ${border};background:${bg}">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.375rem">
-          <i data-lucide="${icon}" class="w-4 h-4" style="color:${color}"></i>
-          <span style="font-weight:700;font-size:.8125rem;color:${color};text-transform:uppercase;letter-spacing:.04em">${_t('AI X-RAY FRACTURE ANALYSIS')}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.375rem">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <i data-lucide="${icon}" class="w-4 h-4" style="color:${color}"></i>
+            <span style="font-weight:700;font-size:.8125rem;color:${color};text-transform:uppercase;letter-spacing:.04em">${_t('AI X-RAY FRACTURE ANALYSIS')}</span>
+          </div>
+          <span style="font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:9999px;background:${border};color:${color}">${riskLabel}</span>
         </div>
         <p style="font-size:.875rem;font-weight:600;color:var(--text);margin-bottom:.25rem">${_t('Diagnosis')}: <span style="color:${color}">${lr.ai_diagnosis}</span></p>
         <div style="margin-bottom:.5rem">
           <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.25rem">${_t('Probability')}: <span style="font-weight:600;color:var(--text)">${lr.ai_probability}%</span></p>
           <div style="height:6px;background:var(--border);border-radius:999px;overflow:hidden">
-            <div style="width:${lr.ai_probability}%;height:100%;background:${color};border-radius:999px;transition:width .5s ease"></div>
+            <div style="width:${lr.ai_probability}%;height:100%;background:${color};border-radius:999px;transition:width .5s ease, background-color .5s ease"></div>
           </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:var(--bg-card)">
@@ -749,6 +768,7 @@
     }
 
     // Recommendations
+
     const recsEl = document.getElementById('recs-list');
     if (!recRes || !recRes.success) {
       recsEl.innerHTML = `<p style="color:var(--text-muted);text-align:center;padding:2rem">${_t('Could not load recommendations')}</p>`;
@@ -772,10 +792,8 @@
     });
     if (window.lucide) lucide.createIcons();
 
-    // Load nursing orders for this patient (skip for lab users)
-    if (userRole !== 'laboratory') {
-      loadNursingOrders();
-    }
+    // Load nursing orders for this patient
+    loadNursingOrders();
   }
 
   // ── Edit modal ────────────────────────────────────────────────────

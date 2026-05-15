@@ -28,7 +28,38 @@
   .nurse-card { border-left:3px solid #22c55e;background:var(--bg);border-radius:.75rem;padding:.875rem 1rem;margin-bottom:.5rem; }
   .nurse-card.vital { border-left-color:#3b82f6; }
   .vital-chip { display:inline-flex;align-items:center;gap:.25rem;padding:.125rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600;background:rgba(59,130,246,.12);color:#3b82f6;margin-right:.25rem; }
+  
+  /* Modern UI additions */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .dark .glass-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); }
+  .glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  }
+  .animated-upload {
+    border: 2px dashed rgba(59, 130, 246, 0.5);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: rgba(59, 130, 246, 0.05);
+  }
+  .animated-upload:hover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+  }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -57,6 +88,41 @@
       <div><p class="stat-label">{{ _("Nurse Updates") }}</p><p class="stat-value" id="stat-nurse">—</p></div>
       <div class="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform"><i data-lucide="heart-pulse" class="w-5 h-5"></i></div>
     </div>
+  </div>
+</div>
+
+<!-- Modern AI & Charts Section -->
+<div class="grid xl:grid-cols-3 gap-6 mb-6">
+  <!-- Chart.js Trend Chart -->
+  <div class="xl:col-span-2 glass-card p-6" id="chart-card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="section-title"><i data-lucide="bar-chart-2" class="w-5 h-5 text-purple-500"></i> {{ _("Activity Trends") }}</h3>
+    </div>
+    <div class="relative h-64 w-full">
+      <canvas id="activityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- AI Diagnosis Card -->
+  <div class="glass-card p-6 flex flex-col justify-between" id="ai-diagnosis-card">
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <i data-lucide="brain-circuit" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-bold text-lg text-white">{{ _("AI Diagnosis") }}</h3>
+      </div>
+      <p class="text-sm text-slate-400 mb-6">{{ _("Upload X-ray or MRI scans for instant automated fracture and abnormality detection.") }}</p>
+      
+      <div class="animated-upload mb-4">
+        <i data-lucide="upload-cloud" class="w-8 h-8 text-blue-500 mx-auto mb-2"></i>
+        <p class="text-sm font-semibold text-blue-500">{{ _("Click or drag file here") }}</p>
+        <p class="text-xs text-slate-500 mt-1">PNG, JPG, DICOM up to 10MB</p>
+      </div>
+    </div>
+    <button onclick="window.location.href='/chat'" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+      <i data-lucide="sparkles" class="w-4 h-4"></i> {{ _("Analyze Scan") }}
+    </button>
   </div>
 </div>
 
@@ -125,6 +191,10 @@
           <i data-lucide="message-circle" class="w-4 h-4 text-cyan-500"></i>
           <span class="text-sm font-medium" style="color:var(--text)">{{ _("AI Medical Chat") }}</span>
         </a>
+        <button id="quick-action-nursing-order" onclick="openNursingOrderModal()" class="quick-action bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20 hidden w-full text-left">
+          <i data-lucide="clipboard-plus" class="w-4 h-4 text-emerald-500"></i>
+          <span class="text-sm font-medium" style="color:var(--text)">{{ _("New Nursing Order") }}</span>
+        </button>
       </div>
     </div>
 
@@ -156,7 +226,91 @@
     </div>
   </div>
 </div>
-{% endblock %}
+
+<!-- Nursing Order Modal -->
+<div id="nursing-order-modal" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:32rem;max-height:90vh;overflow-y:auto;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-5">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.5rem">
+        <i data-lucide="clipboard-plus" class="w-5 h-5 text-emerald-500"></i> {{ _("New Nursing Order") }}
+      </h2>
+      <button onclick="closeNursingOrderModal()" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="nursing-order-form" onsubmit="submitNursingOrder(event)" class="space-y-3">
+      <!-- Patient -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Patient") }} *</label>
+        <select id="no-patient-id" name="patient_id" class="input" required>
+          <option value="">{{ _("Loading patients…") }}</option>
+        </select>
+      </div>
+      <!-- Task title -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Task Title") }} *</label>
+        <input name="title" class="input" placeholder="{{ _('e.g. Administer IV fluids') }}" required />
+      </div>
+      <!-- Order type + priority -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Order Type") }} *</label>
+          <select name="order_type" class="input" onchange="toggleNOMedMethod(this.value)" required>
+            <option value="medication">{{ _("Medication") }}</option>
+            <option value="monitoring">{{ _("Monitoring") }}</option>
+            <option value="procedure">{{ _("Procedure") }}</option>
+            <option value="lab_test">{{ _("Lab Test") }}</option>
+            <option value="other">{{ _("Other") }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Priority") }} *</label>
+          <select name="priority" class="input" required>
+            <option value="routine">{{ _("Routine") }}</option>
+            <option value="urgent">{{ _("Urgent") }}</option>
+            <option value="stat">{{ _("STAT") }}</option>
+          </select>
+        </div>
+      </div>
+      <!-- Medication method (conditional) -->
+      <div id="no-med-method-box">
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Medication Method") }}</label>
+        <select name="medication_method" class="input">
+          <option value="oral">{{ _("Oral") }}</option>
+          <option value="iv">{{ _("IV") }}</option>
+          <option value="injection">{{ _("Injection") }}</option>
+          <option value="topical">{{ _("Topical") }}</option>
+          <option value="inhaler">{{ _("Inhaler") }}</option>
+        </select>
+      </div>
+      <!-- Assign nurse + due at -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Assign Nurse") }}</label>
+          <select id="no-nurse-id" name="nurse_id" class="input">
+            <option value="">— {{ _("Unassigned") }} —</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Due At") }}</label>
+          <input name="due_at" type="datetime-local" class="input" />
+        </div>
+      </div>
+      <!-- Description -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Description") }}</label>
+        <textarea name="description" rows="2" class="input" placeholder="{{ _('Optional details…') }}"></textarea>
+      </div>
+      <div id="no-err" class="hidden p-3 text-sm text-red-500" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:.75rem"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" onclick="closeNursingOrderModal()" class="btn-secondary flex-1 justify-center">{{ _("Cancel") }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center" style="background:#059669">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _("Create Order") }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Add Nurse Modal -->
 <div id="nurse-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -219,6 +373,8 @@
   </div>
 </div>
 
+{% endblock %}
+
 {% block scripts %}
 <script>
   window._T = {
@@ -255,6 +411,12 @@
     "License Number": "{{ _("License Number") }}",
     "Nurse deleted": "{{ _("Nurse deleted") }}",
     "Failed to delete nurse": "{{ _("Failed to delete nurse") }}",
+    "New Nursing Order": "{{ _("New Nursing Order") }}",
+    "Nursing order created!": "{{ _("Nursing order created!") }}",
+    "Failed to create order": "{{ _("Failed to create order") }}",
+    "Loading patients…": "{{ _("Loading patients…") }}",
+    "Select a patient": "{{ _("Select a patient") }}",
+    "Unassigned": "{{ _("Unassigned") }}",
   };
 
   const user = Auth.getUser();
@@ -273,7 +435,6 @@
   // Redirect pharmacy users to pharmacy dashboard
   if (role === 'pharmacy') {
     window.location.href = '/pharmacy';
-    return;
   }
 
   // Hide system status for non-admin
@@ -290,6 +451,12 @@
   if (role === 'laboratory') {
     const ids = ['stat-card-appointments','stat-card-prescriptions','stat-card-nurse','appointments-card','nurse-activity-card','quick-action-appointment','quick-action-prescription','quick-action-records'];
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  }
+
+  // Show nursing order quick action for doctors
+  if (role === 'doctor') {
+    const noBtn = document.getElementById('quick-action-nursing-order');
+    if (noBtn) noBtn.classList.remove('hidden');
   }
 
   const H = { Authorization: `Bearer ${Auth.getToken()}` };
@@ -557,7 +724,81 @@
     } catch { showToast(_t('Network error. Please try again.'), 'error'); }
   }
 
-  // ── Init ──────────────────────────────────────────────────────────
+  // ── Nursing Order Modal (dashboard) ────────────────────────────
+  async function openNursingOrderModal() {
+    const m = document.getElementById('nursing-order-modal');
+    document.getElementById('nursing-order-form').reset();
+    document.getElementById('no-err').classList.add('hidden');
+    toggleNOMedMethod('medication');
+    m.style.display = 'flex'; m.classList.remove('hidden');
+    if (window.lucide) setTimeout(() => lucide.createIcons(), 50);
+
+    // Load patients
+    const pSelect = document.getElementById('no-patient-id');
+    pSelect.innerHTML = `<option value="">${_t('Loading patients…')}</option>`;
+    try {
+      const pr = await fetch('/api/patients/?limit=200', { headers: H }).then(r => r.json());
+      const patients = (pr.success && pr.data.items) ? pr.data.items : [];
+      pSelect.innerHTML = `<option value="">${_t('Select a patient')}</option>` +
+        patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    } catch { pSelect.innerHTML = `<option value="">${_t('Select a patient')}</option>`; }
+
+    // Load nurses
+    const nSelect = document.getElementById('no-nurse-id');
+    nSelect.innerHTML = `<option value="">— ${_t('Unassigned')} —</option>`;
+    try {
+      const nr = await fetch('/api/doctor/nurses?limit=200', { headers: H }).then(r => r.json());
+      const nurses = (nr.success && nr.data.items) ? nr.data.items : [];
+      nSelect.innerHTML += nurses.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+    } catch {}
+  }
+
+  function closeNursingOrderModal() {
+    const m = document.getElementById('nursing-order-modal');
+    m.style.display = 'none'; m.classList.add('hidden');
+  }
+
+  function toggleNOMedMethod(type) {
+    const box = document.getElementById('no-med-method-box');
+    if (box) box.style.display = (type === 'medication') ? 'block' : 'none';
+  }
+
+  async function submitNursingOrder(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    data.patient_id = parseInt(data.patient_id);
+    if (!data.nurse_id) delete data.nurse_id;
+    if (!data.due_at) delete data.due_at;
+    if (!data.description) delete data.description;
+    if (data.order_type !== 'medication') delete data.medication_method;
+
+    const errEl = document.getElementById('no-err');
+    errEl.classList.add('hidden');
+
+    try {
+      const r = await fetch('/api/nursing-orders', {
+        method: 'POST',
+        headers: { ...H, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const res = await r.json();
+      if (r.ok && res.success) {
+        closeNursingOrderModal();
+        showToast(_t('Nursing order created!'));
+      } else {
+        let msg = _t('Failed to create order');
+        if (typeof res?.detail === 'string') msg = res.detail;
+        else if (Array.isArray(res?.detail)) msg = res.detail.map(e => e.msg).join(', ');
+        errEl.textContent = msg;
+        errEl.classList.remove('hidden');
+      }
+    } catch {
+      errEl.textContent = _t('Failed to create order');
+      errEl.classList.remove('hidden');
+    }
+  }
+
+  // Init
   renderSchedule();
   loadAppointments();
   loadPatients();
@@ -565,5 +806,58 @@
   loadNurseData();
   loadHealth();
   if (role === 'doctor') loadMyNurses();
+
+  // Initialize Modern Chart.js
+  setTimeout(() => {
+    const ctx = document.getElementById('activityChart');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label: _t('Appointments'),
+            data: [12, 19, 15, 25, 22, 10, 5],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: true,
+            borderWidth: 2,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: '#3b82f6'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#fff',
+              bodyColor: '#cbd5e1',
+              padding: 10,
+              cornerRadius: 8,
+              displayColors: false
+            }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+              ticks: { color: '#94a3b8' }
+            },
+            x: {
+              grid: { display: false, drawBorder: false },
+              ticks: { color: '#94a3b8' }
+            }
+          },
+          interaction: { intersect: false, mode: 'index' },
+        }
+      });
+    }
+  }, 500);
 </script>
 {% endblock %}

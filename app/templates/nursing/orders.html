@@ -3,6 +3,12 @@
 {% block page_title %}{{ _('Nursing Orders') }}{% endblock %}
 {% block page_subtitle %}{{ _('Tasks assigned by doctors') }}{% endblock %}
 
+{% block header_actions %}
+<button onclick="openNurseModal()" id="btn-add-nurse" class="btn-primary text-xs py-1.5 hidden">
+  <i data-lucide="user-plus" class="w-4 h-4"></i> {{ _("Add Nurse") }}
+</button>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-5">
   <!-- Stats -->
@@ -155,6 +161,67 @@
     </div>
   </div>
 </div>
+
+<!-- Add Nurse Modal -->
+<div id="nurse-modal" class="hidden" style="position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(6px);padding:1rem">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:1.25rem;padding:1.5rem;width:100%;max-width:28rem;animation:slideUp .3s ease-out">
+    <div class="flex items-center justify-between mb-5">
+      <h2 style="font-size:1.0625rem;font-weight:700;color:var(--text)">{{ _("Add Nurse") }}</h2>
+      <button onclick="closeNurseModal()" style="color:var(--text-muted)" class="hover:text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="nurse-form" onsubmit="createNurse(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Full Name") }} *</label>
+        <input name="name" class="input" placeholder="{{ _('Full name') }}" required />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Email") }} *</label>
+          <input name="email" type="email" class="input" required />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Username") }} *</label>
+          <input name="username" class="input" required />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Password") }} *</label>
+        <input name="password" type="password" class="input" placeholder="{{ _('Min 8 chars') }}" required minlength="8" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Department") }}</label>
+          <input name="department" class="input" placeholder="{{ _('e.g. ICU, Emergency') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Shift") }}</label>
+          <select name="shift" class="input">
+            <option value="">—</option>
+            <option value="Day">{{ _("Day") }}</option>
+            <option value="Night">{{ _("Night") }}</option>
+            <option value="Evening">{{ _("Evening") }}</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("Phone") }}</label>
+        <input name="phone" type="tel" class="input" placeholder="{{ _('+1 234 567 8900') }}" />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _("License Number") }}</label>
+        <input name="license_number" class="input font-mono" placeholder="{{ _('License') }}" />
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeNurseModal()" class="btn-secondary flex-1 justify-center">{{ _("Cancel") }}</button>
+        <button type="submit" class="btn-primary flex-1 justify-center" style="background:#059669">
+          <i data-lucide="check" class="w-4 h-4"></i> {{ _("Create") }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -207,6 +274,9 @@
     "Weight": "{{ _('Weight') }}",
     "Notes": "{{ _('Notes') }}",
     "Note": "{{ _('Note') }}",
+    "Add Nurse": "{{ _('Add Nurse') }}",
+    "Nurse created successfully!": "{{ _('Nurse created successfully!') }}",
+    "Failed to create nurse": "{{ _('Failed to create nurse') }}",
   };
   function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
 
@@ -439,6 +509,54 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', loadOrders);
+  function openNurseModal() {
+    openModal('nurse-modal');
+  }
+
+  function closeNurseModal() {
+    closeModal('nurse-modal');
+  }
+
+  function _errMsg(res) {
+    if (!res) return _t('Network error');
+    if (typeof res.detail === 'string') return res.detail;
+    if (Array.isArray(res.detail)) return res.detail.map(e => e.msg).join('; ');
+    return _t('Failed to create nurse');
+  }
+
+  async function createNurse(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    if (!data.shift) delete data.shift;
+    if (!data.department) delete data.department;
+    if (!data.phone) delete data.phone;
+    if (!data.license_number) delete data.license_number;
+    try {
+      const r = await fetch('/api/doctor/nurses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Auth.getToken()}` },
+        body: JSON.stringify(data),
+      });
+      const res = await r.json();
+      if (r.ok && res.success) {
+        closeNurseModal();
+        e.target.reset();
+        showToast(_t('Nurse created successfully!'));
+      } else {
+        showToast(_errMsg(res), 'error');
+      }
+    } catch {
+      showToast(_t('Network error'), 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadOrders();
+    const user = Auth.getUser();
+    if (user && user.role === 'doctor') {
+      const btn = document.getElementById('btn-add-nurse');
+      if (btn) btn.classList.remove('hidden');
+    }
+  });
 </script>
 {% endblock %}

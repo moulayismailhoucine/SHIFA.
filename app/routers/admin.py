@@ -19,6 +19,10 @@ def _hash_password(plain: str) -> str:
 
 
 class DoctorProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
     specialty: Optional[str] = None
     phone: Optional[str] = None
     license_number: Optional[str] = None
@@ -344,11 +348,24 @@ def update_doctor_profile(
     db: Session = Depends(get_db),
     _=Depends(require_admin),
 ):
-    d = db.query(Doctor).filter(Doctor.id == doctor_id).first()
+    d = db.query(Doctor).options(joinedload(Doctor.user)).filter(Doctor.id == doctor_id).first()
     if not d:
         raise HTTPException(status_code=404, detail="Doctor not found")
-    for k, v in body.model_dump(exclude_unset=True).items():
+        
+    data = body.model_dump(exclude_unset=True)
+    if "password" in data:
+        data["password_hash"] = _hash_password(data.pop("password"))
+        
+    doctor_fields = {"specialty", "phone", "license_number", "bio", "working_days", "working_hours_start", "working_hours_end", "break_start", "break_end", "treatment_time", "clinic_address"}
+    user_data = {k: v for k, v in data.items() if k not in doctor_fields}
+    doctor_data = {k: v for k, v in data.items() if k in doctor_fields}
+    
+    for k, v in user_data.items():
+        setattr(d.user, k, v)
+        
+    for k, v in doctor_data.items():
         setattr(d, k, v)
+        
     db.commit()
     return {"success": True, "message": "Doctor profile updated"}
 

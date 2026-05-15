@@ -52,7 +52,11 @@ def _load_model():
     if not model_path.exists():
         return None
     try:
-        return keras.models.load_model(str(model_path))
+        class CustomDense(keras.layers.Dense):
+            def __init__(self, **kwargs):
+                kwargs.pop('quantization_config', None)
+                super().__init__(**kwargs)
+        return keras.models.load_model(str(model_path), custom_objects={'Dense': CustomDense})
     except Exception as e:
         print(json.dumps({"error": f"Failed to load model: {e}"}), file=sys.stderr)
         return None
@@ -74,7 +78,14 @@ def analyze(image_path: str) -> dict:
         return {"error": "Model not found. Train first with: python -m app.ai.train"}
 
     x = _preprocess(image_path)
-    probs = model.predict(x, verbose=0)[0]
+    raw_probs = model.predict(x, verbose=0)[0]
+
+    if len(raw_probs) == 1:
+        prob_abnormal = float(raw_probs[0])
+        prob_normal = 1.0 - prob_abnormal
+        probs = [prob_normal, prob_abnormal]
+    else:
+        probs = [float(p) for p in raw_probs]
 
     pred_idx = int(np.argmax(probs))
     diagnosis = CLASS_NAMES[pred_idx]
@@ -85,7 +96,7 @@ def analyze(image_path: str) -> dict:
     if 40 <= probability <= 60:
         note = "Low confidence prediction. Strongly recommend specialist review."
 
-    class_probs = {CLASS_NAMES[i]: float(probs[i] * 100) for i in range(len(CLASS_NAMES))}
+    class_probs = {CLASS_NAMES[i]: float(probs[i] * 100) for i in range(min(len(CLASS_NAMES), len(probs)))}
 
     return {
         "diagnosis": diagnosis,

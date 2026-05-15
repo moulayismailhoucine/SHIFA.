@@ -1,63 +1,360 @@
 {% extends "base.html" %}
-{% block title %}{{ _('Lab Dashboard') }}{% endblock %}
-{% block page_title %}{{ _('Lab Dashboard') }}{% endblock %}
-{% block page_subtitle %}{{ _('View prescriptions and upload results') }}{% endblock %}
+{% block title %}{{ _('Laboratory Portal') }}{% endblock %}
+
+{% block head %}
+<style>
+  /* Custom Lab Portal Styles matching the design */
+  .lab-portal-bg {
+    background: linear-gradient(-45deg, #0f172a, #1e293b, #451a03, #1e1b4b);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    min-height: calc(100vh - 4rem);
+    margin: -1.5rem;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .dark .lab-portal-bg {
+    background: linear-gradient(-45deg, #0f172a, #1e293b, #78350f, #1e1b4b);
+    background-size: 400% 400%;
+  }
+
+  @keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Decorative Orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+    z-index: 0;
+    pointer-events: none;
+    animation: float 20s infinite ease-in-out alternate;
+  }
+  .orb-1 { top: 10%; left: 15%; width: 300px; height: 300px; background: #f59e0b; animation-delay: 0s; }
+  .orb-2 { bottom: 10%; right: 15%; width: 400px; height: 400px; background: #3b82f6; animation-delay: -5s; }
+  .orb-3 { top: 40%; right: 40%; width: 250px; height: 250px; background: #8b5cf6; animation-delay: -10s; opacity: 0.2; }
+
+  @keyframes float {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(-50px) scale(1.1); }
+  }
+  
+  .lab-tab {
+    position: relative;
+    z-index: 10;
+    padding: 0.6rem 1.4rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(30, 41, 59, 0.8);
+    color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  .lab-tab:hover {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+  }
+  .lab-tab.active {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+  }
+  
+  .lab-card {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 1.5rem;
+    padding: 3rem 2rem;
+    max-width: 48rem;
+    margin: 0 auto;
+    text-align: center;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+    z-index: 10;
+  }
+
+  .nfc-icon-wrap {
+    width: 5.5rem;
+    height: 5.5rem;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    border-radius: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 12px 30px rgba(245, 158, 11, 0.5), inset 0 2px 0 rgba(255,255,255,0.2);
+    position: relative;
+  }
+  .nfc-icon-wrap::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 2rem;
+    border: 2px solid rgba(245, 158, 11, 0.4);
+    animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes ping-slow {
+    75%, 100% { transform: scale(1.4); opacity: 0; }
+  }
+  
+  .nfc-input {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    color: white;
+    width: 100%;
+    outline: none;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+  }
+  .nfc-input:focus {
+    border-color: #f59e0b;
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
+  }
+  
+  .nfc-btn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    font-weight: 700;
+    padding: 0.875rem 1.75rem;
+    border-radius: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+    border: none;
+  }
+  .nfc-btn:hover {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(245, 158, 11, 0.4);
+  }
+
+  .content-section {
+    display: none;
+    animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    position: relative;
+    z-index: 10;
+  }
+  .content-section.active {
+    display: block;
+  }
+
+  @keyframes slideUpFade {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Patient ID Search -->
-<div class="card p-6 mb-6">
-  <div class="flex items-center gap-4">
-    <div class="flex-1 max-w-md">
-      <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Patient ID') }} *</label>
-      <div class="relative">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
-        <input id="patient-id-input" type="number" class="input pl-10" placeholder="{{ _('Enter patient ID…') }}" oninput="handlePatientSearch(this.value)" />
-      </div>
-    </div>
-    <div id="patient-info" class="hidden flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold flex-shrink-0" id="patient-initials">—</div>
-      <div>
-        <p class="font-medium text-sm" id="patient-name">—</p>
-        <p class="text-xs text-slate-500" id="patient-details">—</p>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="lab-portal-bg">
+  <!-- Decorative background elements -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
 
-<!-- Ordonnances List -->
-<div id="ordonnances-section" class="hidden">
-  <div class="card overflow-hidden">
-    <div class="p-5" style="border-bottom:1px solid var(--border)">
-      <h3 class="font-semibold flex items-center gap-2">
-        <i data-lucide="clipboard-list" class="w-5 h-5 text-blue-400"></i> {{ _('Lab Prescriptions') }}
-      </h3>
+  <!-- Tabs Navigation -->
+  <div class="flex justify-center gap-3 mb-10 flex-wrap">
+    <button class="lab-tab active" onclick="switchTab('nfc')">
+      <i data-lucide="wifi" class="w-4 h-4"></i> {{ _('NFC Scan & Upload') }}
+    </button>
+    <button class="lab-tab" onclick="switchTab('patients')">
+      <i data-lucide="users" class="w-4 h-4"></i> {{ _('All Patients') }}
+    </button>
+    <button class="lab-tab" onclick="switchTab('history')">
+      <i data-lucide="history" class="w-4 h-4"></i> {{ _('Upload History') }}
+    </button>
+    <button class="lab-tab" onclick="switchTab('profile')">
+      <i data-lucide="flask-conical" class="w-4 h-4"></i> {{ _('Lab Profile') }}
+    </button>
+  </div>
+
+  <!-- Tab 1: NFC Scan & Upload -->
+  <div id="tab-nfc" class="content-section active">
+    <div class="lab-card" id="scan-container">
+      <div class="nfc-icon-wrap">
+        <i data-lucide="wifi" class="w-8 h-8"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-white mb-2">{{ _('Scan Patient NFC Card') }}</h2>
+      <p class="text-slate-400 mb-8">{{ _('Tap or enter the patient NFC UID to load their record and add lab results') }}</p>
+      
+      <div class="flex items-center gap-3 max-w-md mx-auto">
+        <input id="nfc-input" type="text" class="nfc-input" placeholder="{{ _('NFC UID (e.g. NFC001ABC) or ID...') }}" onkeypress="if(event.key === 'Enter') handlePatientSearch(this.value)" />
+        <button onclick="handlePatientSearch(document.getElementById('nfc-input').value)" class="nfc-btn">
+          <i data-lucide="search" class="w-4 h-4"></i> {{ _('Scan') }}
+        </button>
+      </div>
     </div>
-    <div class="overflow-x-auto">
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-slate-700/50">
-            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Date') }}</th>
-            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Reference') }}</th>
-            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Tests') }}</th>
-            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Status') }}</th>
-            <th class="text-left text-xs font-semibold text-slate-400 uppercase tracking-wide px-4 py-4">{{ _('Taken') }}</th>
-            <th class="text-right text-xs font-semibold text-slate-400 uppercase tracking-wide px-6 py-4">{{ _('Actions') }}</th>
-          </tr>
-        </thead>
-        <tbody id="ord-tbody">
-          <tr><td colspan="6" class="text-center py-12 text-slate-500">{{ _('Loading…') }}</td></tr>
-        </tbody>
-      </table>
+
+    <!-- Patient Result Container -->
+    <div id="patient-result-container" class="hidden max-w-4xl mx-auto mt-8">
+      <div class="flex items-center justify-between mb-4">
+        <button onclick="resetScan()" class="text-slate-400 hover:text-white flex items-center gap-2 text-sm">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i> {{ _('Back to Scan') }}
+        </button>
+      </div>
+      
+      <div class="glass rounded-xl p-6 mb-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500 font-bold text-xl flex-shrink-0" id="patient-initials">—</div>
+          <div>
+            <h3 class="font-bold text-lg text-white" id="patient-name">—</h3>
+            <p class="text-sm text-slate-400" id="patient-details">—</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ordonnances List -->
+      <div class="glass rounded-xl overflow-hidden">
+        <div class="p-5" style="border-bottom:1px solid rgba(255,255,255,0.1)">
+          <h3 class="font-semibold flex items-center gap-2 text-white">
+            <i data-lucide="clipboard-list" class="w-5 h-5 text-amber-400"></i> {{ _('Lab Prescriptions') }}
+          </h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-white/10">
+                <th class="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">{{ _('Date') }}</th>
+                <th class="px-4 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">{{ _('Tests') }}</th>
+                <th class="px-4 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">{{ _('Status') }}</th>
+                <th class="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wide">{{ _('Actions') }}</th>
+              </tr>
+            </thead>
+            <tbody id="ord-tbody">
+              <tr><td colspan="4" class="text-center py-8 text-slate-500">{{ _('No prescriptions found.') }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Tab 2: All Patients -->
+  <div id="tab-patients" class="content-section">
+    <div class="glass rounded-xl p-6 max-w-5xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-white">{{ _('All Patients') }}</h2>
+        <div class="relative w-64">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="patients-search" class="nfc-input pl-10 py-2 text-sm" placeholder="{{ _('Search patients...') }}" oninput="debounceSearchPatients()" />
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('Name') }}</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('NFC UID') }}</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('Contact') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase">{{ _('Action') }}</th>
+            </tr>
+          </thead>
+          <tbody id="patients-tbody">
+            <tr><td colspan="4" class="text-center py-8 text-slate-500">{{ _('Loading...') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Upload History -->
+  <div id="tab-history" class="content-section">
+    <div class="glass rounded-xl p-6 max-w-5xl mx-auto">
+      <h2 class="text-xl font-bold text-white mb-6">{{ _('Recent Lab Results') }}</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('Date') }}</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('Patient ID') }}</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('Test Title') }}</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">{{ _('Category') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase">{{ _('File') }}</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <tr><td colspan="5" class="text-center py-8 text-slate-500">{{ _('Loading history...') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Lab Profile -->
+  <div id="tab-profile" class="content-section">
+    <div class="glass rounded-xl p-8 max-w-2xl mx-auto text-center">
+      <div class="w-24 h-24 rounded-full bg-slate-800 border-4 border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-500">
+        <i data-lucide="flask-conical" class="w-10 h-10"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-white mb-1" id="profile-name">{{ _('Loading...') }}</h2>
+      <p class="text-amber-500 text-sm font-semibold mb-6">{{ _('Laboratory Account') }}</p>
+      
+      <div class="grid grid-cols-2 gap-4 text-left">
+        <div class="bg-slate-800/50 p-4 rounded-lg">
+          <p class="text-xs text-slate-400 uppercase tracking-wide mb-1">{{ _('Email') }}</p>
+          <p class="text-white font-medium" id="profile-email">—</p>
+        </div>
+        <div class="bg-slate-800/50 p-4 rounded-lg">
+          <p class="text-xs text-slate-400 uppercase tracking-wide mb-1">{{ _('Username') }}</p>
+          <p class="text-white font-medium" id="profile-username">—</p>
+        </div>
+      </div>
+
+      <div class="mt-8 pt-8 border-t border-white/10 text-left">
+        <h3 class="text-lg font-bold text-white mb-4">{{ _('Change Password') }}</h3>
+        <form id="change-password-form" onsubmit="handleChangePassword(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Old Password') }} *</label>
+            <input type="password" id="old-password" class="nfc-input py-2 text-sm" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('New Password') }} *</label>
+            <input type="password" id="new-password" class="nfc-input py-2 text-sm" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Confirm New Password') }} *</label>
+            <input type="password" id="confirm-password" class="nfc-input py-2 text-sm" required />
+          </div>
+          <button type="submit" id="pwd-btn" class="nfc-btn mt-2 w-full justify-center py-2.5">
+            <i data-lucide="key" class="w-4 h-4"></i> {{ _('Update Password') }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Upload Result Modal -->
-<div id="upload-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-  <div class="glass rounded-2xl p-6 w-full max-w-md animate-slide-up">
+<div id="upload-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="glass border border-white/10 rounded-2xl p-6 w-full max-w-md animate-slide-up" style="background: rgba(30,41,59,0.95)">
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-white">{{ _('Upload Lab Result') }}</h2>
-      <button onclick="closeUploadModal()" class="text-slate-500 hover:text-white">
+      <button onclick="closeUploadModal()" class="text-slate-400 hover:text-white">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
@@ -65,15 +362,15 @@
       <input type="hidden" id="upload-ordonnance-id" />
       <div>
         <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Title') }} *</label>
-        <input id="upload-title" name="title" class="input" placeholder="{{ _('e.g. Blood Test — CBC') }}" required />
+        <input id="upload-title" name="title" class="nfc-input py-2" placeholder="{{ _('e.g. Blood Test — CBC') }}" required />
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Notes') }}</label>
-        <textarea id="upload-note" name="note" class="input h-20 resize-none" placeholder="{{ _('Optional notes…') }}"></textarea>
+        <textarea id="upload-note" name="note" class="nfc-input py-2 h-20 resize-none" placeholder="{{ _('Optional notes…') }}"></textarea>
       </div>
-      <div id="category-box" style="display:none">
+      <div id="category-box">
         <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Category') }}</label>
-        <select id="upload-category" name="category" class="input">
+        <select id="upload-category" name="category" class="nfc-input py-2">
           <option value="">— {{ _('Select') }} —</option>
           <option value="xray">{{ _('X-Ray') }}</option>
           <option value="mri">{{ _('MRI') }}</option>
@@ -85,64 +382,94 @@
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('File') }} *</label>
-        <input id="upload-file" name="file" type="file" class="input pt-1.5" accept=".pdf,.jpg,.jpeg,.png,.tiff" required onchange="handleFileChange(this)" />
+        <input id="upload-file" name="file" type="file" class="nfc-input py-1.5" accept=".pdf,.jpg,.jpeg,.png,.tiff" required />
       </div>
-      <div class="flex gap-3">
-        <button type="button" onclick="closeUploadModal()" class="btn-secondary flex-1">{{ _('Cancel') }}</button>
-        <button type="submit" class="btn-primary flex-1 justify-center">
+      <div class="flex gap-3 mt-6">
+        <button type="button" onclick="closeUploadModal()" class="flex-1 py-2 rounded-lg font-medium text-slate-300 hover:bg-slate-800 transition-colors">{{ _('Cancel') }}</button>
+        <button type="submit" class="flex-1 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-400 text-slate-900 transition-colors flex items-center justify-center gap-2">
           <i data-lucide="upload" class="w-4 h-4"></i> {{ _('Upload') }}
         </button>
       </div>
     </form>
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
   let currentPatientId = null;
   let currentPatient = null;
+  let searchTimeout = null;
 
   window._T = {
     "Patient not found": "{{ _('Patient not found') }}",
     "No lab prescriptions found": "{{ _('No lab prescriptions found') }}",
     "Error loading": "{{ _('Error loading') }}",
-    "Marked as taken": "{{ _('Marked as taken') }}",
     "Lab result uploaded!": "{{ _('Lab result uploaded!') }}",
     "Upload failed": "{{ _('Upload failed') }}",
+    "Passwords do not match": "{{ _('Passwords do not match') }}",
   };
   function _t(key) { return window._T[key] !== undefined ? window._T[key] : key; }
 
-  async function handlePatientSearch(patientId) {
-    if (!patientId || patientId.length < 1) {
-      document.getElementById('ordonnances-section').classList.add('hidden');
-      document.getElementById('patient-info').classList.add('hidden');
-      return;
-    }
-    const id = parseInt(patientId);
-    if (isNaN(id)) return;
+  function switchTab(tabId) {
+    document.querySelectorAll('.lab-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.content-section').forEach(c => c.classList.remove('active'));
+    
+    event.currentTarget.classList.add('active');
+    document.getElementById('tab-' + tabId).classList.add('active');
 
+    if(tabId === 'patients') loadPatients();
+    if(tabId === 'history') loadHistory();
+    if(tabId === 'profile') loadProfile();
+  }
+
+  // NFC & Search Logic
+  async function handlePatientSearch(query) {
+    if (!query || query.trim() === '') return;
+    
     const token = Auth.getToken();
-    const res = await fetch(`/api/patients/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
     
-    if (!res?.success) {
-      document.getElementById('ordonnances-section').classList.add('hidden');
-      document.getElementById('patient-info').classList.add('hidden');
+    // First try search by query to get the patient (handles UID or name/phone)
+    let res = await fetch(`/api/patients/?search=${encodeURIComponent(query)}&limit=1`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    }).then(r => r.json()).catch(() => null);
+    
+    let patient = null;
+    
+    // If not found by search, try direct ID if it's a number
+    if (!res || !res.data || res.data.items.length === 0) {
+      const id = parseInt(query);
+      if (!isNaN(id)) {
+        const idRes = await fetch(`/api/patients/${id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+        if (idRes && idRes.success) patient = idRes.data;
+      }
+    } else {
+      patient = res.data.items[0];
+    }
+
+    if (!patient) {
+      showToast(_t('Patient not found'), 'error');
       return;
     }
 
-    currentPatientId = id;
-    currentPatient = res.data;
-    
-    // Show patient info
-    const initials = (res.data.name || '').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-    document.getElementById('patient-initials').textContent = initials;
-    document.getElementById('patient-name').textContent = res.data.name || '—';
-    document.getElementById('patient-details').textContent = `ID: ${res.data.id}${res.data.age ? ' · Age: ' + res.data.age : ''}${res.data.gender ? ' · ' + res.data.gender : ''}`;
-    document.getElementById('patient-info').classList.remove('hidden');
-    
-    // Load ordonnances
-    loadOrdonnances(id);
+    // Redirect to full patient profile page
+    window.location.href = `/patients/${patient.id}`;
+  }
+
+  function resetScan() {
+    currentPatientId = null;
+    currentPatient = null;
+    document.getElementById('nfc-input').value = '';
+    document.getElementById('scan-container').classList.remove('hidden');
+    document.getElementById('patient-result-container').classList.add('hidden');
+  }
+
+  function selectPatient(id) {
+    switchTab('nfc');
+    // We select the first tab and mock the event target
+    document.querySelectorAll('.lab-tab')[0].classList.add('active');
+    handlePatientSearch(id.toString());
   }
 
   async function loadOrdonnances(patientId) {
@@ -151,64 +478,145 @@
     const tbody = document.getElementById('ord-tbody');
     
     if (!res?.success) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">${_t('Error loading')}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-500">${_t('Error loading')}</td></tr>`;
       return;
     }
 
-    // Filter for lab target only
     const labOrds = res.data.filter(o => o.target === 'lab');
-    
     if (!labOrds.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">${_t('No lab prescriptions found')}</td></tr>`;
-      document.getElementById('ordonnances-section').classList.add('hidden');
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-500">${_t('No lab prescriptions found')}</td></tr>`;
       return;
     }
 
-    document.getElementById('ordonnances-section').classList.remove('hidden');
-
-    const colors = { active: 'bg-green-600/20 text-green-400', dispensed: 'bg-blue-600/20 text-blue-400', expired: 'bg-slate-600/20 text-slate-400' };
     tbody.innerHTML = labOrds.map(o => `
-      <tr class="border-b border-slate-700/30 hover:bg-slate-800/30 transition-colors">
+      <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
         <td class="px-6 py-4 text-sm text-white">${o.issued_date}</td>
-        <td class="px-4 py-4 text-sm text-slate-300 font-mono">${o.reference_number || '—'}</td>
-        <td class="px-4 py-4 text-sm text-slate-400">${Array.isArray(o.medications) ? o.medications.map(m => m.name).join(', ') : '—'}</td>
-        <td class="px-4 py-4"><span class="badge ${colors[o.status] || ''}">${o.status}</span></td>
-        <td class="px-4 py-4">
-          <button onclick="toggleTaken(${o.id}, ${o.is_taken})" class="${o.is_taken ? 'text-green-400' : 'text-slate-500'} hover:text-green-300 transition-colors">
-            <i data-lucide="${o.is_taken ? 'check-circle' : 'circle'}" class="w-5 h-5"></i>
-          </button>
-        </td>
+        <td class="px-4 py-4 text-sm text-slate-300">${Array.isArray(o.medications) ? o.medications.map(m => m.name).join(', ') : '—'}</td>
+        <td class="px-4 py-4"><span class="px-2 py-1 text-xs rounded-full ${o.status==='active'?'bg-green-500/20 text-green-400':'bg-slate-500/20 text-slate-400'}">${o.status}</span></td>
         <td class="px-6 py-4 text-right">
-          <button onclick="openUploadModal(${o.id})" class="btn-primary text-xs py-1">{{ _('Upload Result') }}</button>
+          <button onclick="openUploadModal(${o.id})" class="px-3 py-1.5 bg-amber-500/20 text-amber-500 hover:bg-amber-500 hover:text-slate-900 rounded-lg text-xs font-semibold transition-colors">
+            ${_t('Upload Result')}
+          </button>
         </td>
       </tr>
     `).join('');
-    if (window.lucide) lucide.createIcons();
   }
 
-  async function toggleTaken(ordonnanceId, currentStatus) {
+  // All Patients Tab
+  function debounceSearchPatients() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      loadPatients(document.getElementById('patients-search').value);
+    }, 300);
+  }
+
+  async function loadPatients(search = '') {
     const token = Auth.getToken();
-    const res = await fetch(`/api/ordonnances/${ordonnanceId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ is_taken: !currentStatus }),
-    }).then(r => r.json()).catch(() => null);
+    const res = await fetch(`/api/patients/?search=${encodeURIComponent(search)}&limit=50`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+    const tbody = document.getElementById('patients-tbody');
     
-    if (res?.success) {
-      showToast(_t('Marked as taken'));
-      loadOrdonnances(currentPatientId);
-    } else {
-      showToast(res?.detail || 'Error', 'error');
+    if (!res?.success || !res.data.items.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-slate-500">No patients found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = res.data.items.map(p => `
+      <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+        <td class="px-4 py-3 text-sm text-white font-medium">${p.name}</td>
+        <td class="px-4 py-3 text-sm text-slate-400 font-mono">${p.nfc_uid || '—'}</td>
+        <td class="px-4 py-3 text-sm text-slate-400">${p.phone || p.email || '—'}</td>
+        <td class="px-4 py-3 text-right">
+          <button onclick="selectPatient(${p.id})" class="px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white rounded text-xs transition-colors">Select</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Upload History Tab
+  async function loadHistory() {
+    const token = Auth.getToken();
+    const res = await fetch(`/api/lab-results/`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+    const tbody = document.getElementById('history-tbody');
+    
+    if (!res?.success || !res.data.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-500">No recent results uploaded.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = res.data.map(r => `
+      <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+        <td class="px-4 py-3 text-sm text-slate-300">${new Date(r.created_at).toLocaleDateString()}</td>
+        <td class="px-4 py-3 text-sm text-slate-300">#${r.patient_id}</td>
+        <td class="px-4 py-3 text-sm text-white font-medium">${r.title}</td>
+        <td class="px-4 py-3 text-sm text-slate-400 capitalize">${(r.category || '—').replace('_',' ')}</td>
+        <td class="px-4 py-3 text-right">
+          <a href="${r.url}" target="_blank" class="inline-flex items-center gap-1 text-xs text-amber-500 hover:text-amber-400">
+            <i data-lucide="external-link" class="w-3 h-3"></i> View
+          </a>
+        </td>
+      </tr>
+    `).join('');
+    if(window.lucide) lucide.createIcons();
+  }
+
+  // Lab Profile Tab
+  function loadProfile() {
+    const user = Auth.getUser();
+    document.getElementById('profile-name').textContent = user.name || 'Laboratory Staff';
+    document.getElementById('profile-email').textContent = user.email || '—';
+    document.getElementById('profile-username').textContent = user.username || '—';
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    const oldPwd = document.getElementById('old-password').value;
+    const newPwd = document.getElementById('new-password').value;
+    const confirmPwd = document.getElementById('confirm-password').value;
+
+    if (newPwd !== confirmPwd) {
+      showToast(_t('Passwords do not match'), 'error');
+      return;
+    }
+
+    const token = Auth.getToken();
+    const btn = document.getElementById('pwd-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>`;
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ old_password: oldPwd, new_password: newPwd })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        showToast(data.message, 'success');
+        document.getElementById('change-password-form').reset();
+      } else {
+        showToast(data.detail || _t('Upload failed'), 'error');
+      }
+    } catch (err) {
+      showToast(_t('Error loading'), 'error');
+    } finally {
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
+  // Upload Modal functions
   function openUploadModal(ordonnanceId) {
     document.getElementById('upload-ordonnance-id').value = ordonnanceId;
     document.getElementById('upload-title').value = '';
     document.getElementById('upload-note').value = '';
     document.getElementById('upload-category').value = '';
     document.getElementById('upload-file').value = '';
-    document.getElementById('category-box').style.display = 'none';
     document.getElementById('upload-modal').classList.remove('hidden');
   }
 
@@ -216,28 +624,29 @@
     document.getElementById('upload-modal').classList.add('hidden');
   }
 
-  function handleFileChange(input) {
-    const file = input.files[0];
-    const box = document.getElementById('category-box');
-    if (file && file.type.startsWith('image/')) {
-      box.style.display = 'block';
-    } else {
-      box.style.display = 'none';
-    }
-  }
-
   async function uploadResult(e) {
     e.preventDefault();
+    if (!currentPatientId) return;
+
     const token = Auth.getToken();
     const formData = new FormData(e.target);
     formData.append('patient_id', currentPatientId);
     
+    // Provide a dummy action to indicate loading
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Uploading...`;
+    btn.disabled = true;
+
     const res = await fetch('/api/lab-results/upload', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData,
     }).then(r => r.json()).catch(() => null);
     
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+
     if (res?.success) {
       closeUploadModal();
       e.target.reset();
@@ -246,5 +655,11 @@
       showToast(res?.detail || _t('Upload failed'), 'error');
     }
   }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    // If the sidebar pushes layout, the gradient still works
+    if(window.lucide) lucide.createIcons();
+  });
 </script>
 {% endblock %}

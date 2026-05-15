@@ -203,6 +203,26 @@
           <input id="edit-photo-input" type="file" accept="image/jpeg,image/png,image/webp" class="input pt-1.5 text-sm" onchange="previewAvatar(this,'edit-avatar-preview')" />
         </div>
       </div>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Full Name') }}</label>
+          <input id="edit-name" name="name" class="input" placeholder="{{ _('Full name') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Username (Code)') }}</label>
+          <input id="edit-username" name="username" class="input" placeholder="{{ _('Username') }}" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Email') }}</label>
+          <input id="edit-email" name="email" type="email" class="input" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('New Password') }}</label>
+          <input id="edit-password" name="password" type="password" class="input" placeholder="{{ _('Leave blank to keep') }}" minlength="8" />
+        </div>
+      </div>
+
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-widest pt-2">{{ _('Clinical Profile') }}</p>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wide">{{ _('Specialty') }}</label>
@@ -579,6 +599,12 @@
       editPreview.innerHTML = '<i data-lucide="user" class="w-7 h-7"></i>';
     }
     document.getElementById('edit-photo-input').value = '';
+    
+    document.getElementById('edit-name').value                   = d.name || '';
+    document.getElementById('edit-username').value               = d.username || '';
+    document.getElementById('edit-email').value                  = d.email || '';
+    document.getElementById('edit-password').value               = '';
+
     document.getElementById('edit-specialty').value              = d.specialty || '';
     document.getElementById('edit-license_number').value         = d.license_number || '';
     document.getElementById('edit-phone').value                  = d.phone || '';
@@ -598,13 +624,17 @@
     const id = document.getElementById('edit-doctor-id').value;
     const fd = new FormData(e.target);
     const data = Object.fromEntries(fd);
+    
+    if (!data.password) delete data.password;
+
     // inject selected days from button picker
     data.working_days = getSelectedDays('edit') || null;
     // convert treatment_time to int or null
     if (data.treatment_time) data.treatment_time = parseInt(data.treatment_time);
     else delete data.treatment_time;
+    
     // strip blanks
-    Object.keys(data).forEach(k => { if (data[k] === '') data[k] = null; });
+    Object.keys(data).forEach(k => { if (data[k] === '') delete data[k]; });
 
     try {
       const r = await fetch(`/api/admin/doctors/${id}`, {
